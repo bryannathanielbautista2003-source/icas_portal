@@ -1,20 +1,92 @@
 @extends('layouts.admin')
-
-@section('title', 'Documents')
-@section('pageDescription', 'Manage site documents, records, and policies.')
-
+@section('title', 'Document Requests')
+@section('pageDescription', 'Review and process student document requests.')
 @section('content')
-    <div class="grid gap-6">
-        @foreach($documents as $document)
-            <div class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
-                <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <h2 class="text-lg font-semibold text-slate-900">{{ $document['title'] }}</h2>
-                        <p class="mt-2 text-sm text-slate-500">Requested on {{ $document['requested'] }}</p>
-                    </div>
-                    <span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ $document['status'] }}</span>
-                </div>
+<div class="space-y-6">
+    {{-- Summary --}}
+    <div class="grid gap-4 sm:grid-cols-4">
+        @foreach([['Pending','8','amber'],['Processing','5','sky'],['Completed','34','emerald'],['Total','47','slate']] as [$lbl,$val,$clr])
+            @php $c = match($clr){'amber'=>['bg-amber-50','border-amber-200','text-amber-700'],'sky'=>['bg-sky-50','border-sky-200','text-sky-700'],'emerald'=>['bg-emerald-50','border-emerald-200','text-emerald-700'],default=>['bg-white','border-slate-200','text-slate-900']}; @endphp
+            <div class="rounded-3xl {{ $c[0] }} border {{ $c[1] }} shadow-sm p-6">
+                <p class="text-xs uppercase tracking-widest font-semibold text-slate-500">{{ $lbl }}</p>
+                <p class="mt-3 text-4xl font-black {{ $c[2] }}">{{ $val }}</p>
             </div>
         @endforeach
     </div>
+
+    <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900">All Document Requests</h2>
+                <p class="text-sm text-slate-500 mt-1">Review requests and update their status. Students will be notified.</p>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <input type="text" placeholder="Search student…" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-green-400">
+                <select class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                    <option value="">All Types</option>
+                    <option>Transcript of Records</option><option>Certificate of Enrollment</option><option>Certificate of Good Standing</option><option>Diploma Copy</option><option>Form 137</option>
+                </select>
+                <select class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                    <option value="">All Statuses</option><option>Pending</option><option>Processing</option><option>Completed</option><option>Rejected</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border border-slate-200">
+            <table class="min-w-full text-sm text-left">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Student</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Document</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Purpose</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Date</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Urgency</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide text-center">Status</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @php
+                    $requests = [
+                        ['student'=>'Ana Reyes',    'doc'=>'Transcript of Records',      'purpose'=>'College Application',    'date'=>'Apr 15','urgency'=>'Standard','status'=>'Completed'],
+                        ['student'=>'Miguel Santos', 'doc'=>'Certificate of Enrollment',  'purpose'=>'Scholarship Application','date'=>'Apr 16','urgency'=>'Rush',    'status'=>'Completed'],
+                        ['student'=>'Sofia Cruz',    'doc'=>'Certificate of Good Standing','purpose'=>'Graduate School',       'date'=>'Apr 18','urgency'=>'Standard','status'=>'Processing'],
+                        ['student'=>'Ana Reyes',    'doc'=>'Certificate of Enrollment',  'purpose'=>'Scholarship Application','date'=>'Apr 18','urgency'=>'Rush',    'status'=>'Processing'],
+                        ['student'=>'Paulo Dela Cruz','doc'=>'Form 137',                 'purpose'=>'Transfer',               'date'=>'Apr 19','urgency'=>'Standard','status'=>'Pending'],
+                        ['student'=>'Maria Gomez',  'doc'=>'Diploma Copy',               'purpose'=>'Employment',             'date'=>'Apr 20','urgency'=>'Standard','status'=>'Pending'],
+                        ['student'=>'Jose Reyes',   'doc'=>'Transcript of Records',      'purpose'=>'Abroad Application',     'date'=>'Apr 21','urgency'=>'Rush',    'status'=>'Pending'],
+                    ];
+                    @endphp
+                    @foreach($requests as $r)
+                        @php
+                            $badge = match($r['status']){'Completed'=>'bg-emerald-100 text-emerald-700','Processing'=>'bg-sky-100 text-sky-700','Pending'=>'bg-amber-100 text-amber-700',default=>'bg-rose-100 text-rose-700'};
+                            $urgBadge = $r['urgency']==='Rush' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600';
+                        @endphp
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-5 py-3.5">
+                                <div class="flex items-center gap-2">
+                                    <div class="h-8 w-8 flex-shrink-0 rounded-full bg-green-600 grid place-items-center text-white text-xs font-bold">{{ strtoupper(substr($r['student'],0,1)) }}</div>
+                                    <span class="font-semibold text-slate-900">{{ $r['student'] }}</span>
+                                </div>
+                            </td>
+                            <td class="px-5 py-3.5 text-slate-700">{{ $r['doc'] }}</td>
+                            <td class="px-5 py-3.5 text-slate-500">{{ $r['purpose'] }}</td>
+                            <td class="px-5 py-3.5 text-slate-500 whitespace-nowrap">{{ $r['date'] }}</td>
+                            <td class="px-5 py-3.5"><span class="inline-flex rounded-full {{ $urgBadge }} px-2.5 py-0.5 text-xs font-semibold">{{ $r['urgency'] }}</span></td>
+                            <td class="px-5 py-3.5 text-center"><span class="inline-flex rounded-full {{ $badge }} px-3 py-1 text-xs font-bold">{{ $r['status'] }}</span></td>
+                            <td class="px-5 py-3.5">
+                                <select class="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-400">
+                                    <option @selected($r['status']==='Pending')>Pending</option>
+                                    <option @selected($r['status']==='Processing')>Processing</option>
+                                    <option @selected($r['status']==='Completed')>Completed</option>
+                                    <option>Rejected</option>
+                                </select>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
 @endsection

@@ -19,6 +19,8 @@ class StudentModuleRecord extends Model
         'module_code',
         'instructor',
         'schedule',
+        'section',
+        'enrollment_status',
         'grade_percent',
         'documents_count',
         'upcoming_assessment_title',
@@ -35,6 +37,7 @@ class StudentModuleRecord extends Model
         return [
             'grade_percent' => 'decimal:2',
             'upcoming_assessment_due_date' => 'date',
+            'enrollment_status' => 'string',
         ];
     }
 

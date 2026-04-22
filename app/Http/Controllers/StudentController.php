@@ -12,16 +12,90 @@ use Illuminate\View\View;
 
 class StudentController extends Controller
 {
+    public function profile(): View
+    {
+        $user = Auth::user();
+        $studentDetails = [
+            'student_id' => 'STU-' . str_pad($user->id ?? 999, 4, '0', STR_PAD_LEFT),
+            'name' => $user->name ?? 'John Doe',
+            'email' => $user->email ?? 'student@example.com',
+            'phone' => '+63 912 345 6789',
+            'address' => '123 University Ave, Manila, Philippines',
+            'program' => 'Bachelor of Science in Information Technology',
+            'year_level' => '3rd Year',
+            'status' => 'Regular',
+            'emergency_contact' => ['name' => 'Jane Doe', 'relation' => 'Mother', 'phone' => '+63 998 765 4321']
+        ];
+        return view('student.profile', compact('studentDetails'));
+    }
+
+    public function schedule(): View
+    {
+        $schedule = [
+            'Mon' => [
+                ['time' => '7:00 AM – 8:30 AM', 'subject' => 'Advanced Mathematics', 'code' => 'MATH301', 'room' => 'Room 201', 'faculty' => 'Prof. Ramos'],
+                ['time' => '1:00 PM – 2:30 PM', 'subject' => 'English Composition', 'code' => 'ENG101', 'room' => 'Room 105', 'faculty' => 'Prof. Santos'],
+            ],
+            'Tue' => [
+                ['time' => '9:00 AM – 10:30 AM', 'subject' => 'Physics I', 'code' => 'PHY201', 'room' => 'Lab 3', 'faculty' => 'Prof. Cruz'],
+                ['time' => '2:00 PM – 3:30 PM', 'subject' => 'World History', 'code' => 'HIST201', 'room' => 'Room 310', 'faculty' => 'Prof. Dela Rosa'],
+            ],
+            'Wed' => [
+                ['time' => '7:00 AM – 8:30 AM', 'subject' => 'Advanced Mathematics', 'code' => 'MATH301', 'room' => 'Room 201', 'faculty' => 'Prof. Ramos'],
+                ['time' => '10:00 AM – 11:30 AM', 'subject' => 'Physical Education', 'code' => 'PE101', 'room' => 'Gymnasium', 'faculty' => 'Coach Villanueva'],
+            ],
+            'Thu' => [
+                ['time' => '9:00 AM – 10:30 AM', 'subject' => 'Physics I', 'code' => 'PHY201', 'room' => 'Lab 3', 'faculty' => 'Prof. Cruz'],
+            ],
+            'Fri' => [
+                ['time' => '7:00 AM – 8:30 AM', 'subject' => 'Advanced Mathematics', 'code' => 'MATH301', 'room' => 'Room 201', 'faculty' => 'Prof. Ramos'],
+                ['time' => '1:00 PM – 2:30 PM', 'subject' => 'English Composition', 'code' => 'ENG101', 'room' => 'Room 105', 'faculty' => 'Prof. Santos'],
+                ['time' => '3:00 PM – 4:30 PM', 'subject' => 'World History', 'code' => 'HIST201', 'room' => 'Room 310', 'faculty' => 'Prof. Dela Rosa'],
+            ],
+            'Sat' => [],
+        ];
+        $totalUnits = 18;
+        $totalSubjects = 5;
+        return view('student.schedule', compact('schedule', 'totalUnits', 'totalSubjects'));
+    }
+
+    public function notifications(): View
+    {
+        $notifications = [
+            ['id' => 1, 'type' => 'grade', 'title' => 'Grade Released: MATH301', 'body' => 'Your grade for Advanced Mathematics Problem Set 3 has been posted. Score: 92/100.', 'time' => '2 hours ago', 'read' => false],
+            ['id' => 2, 'type' => 'document', 'title' => 'Document Request Updated', 'body' => 'Your request for Transcript of Records is now being processed. Expected completion: 3 business days.', 'time' => '5 hours ago', 'read' => false],
+            ['id' => 3, 'type' => 'announcement', 'title' => 'New Announcement Posted', 'body' => 'ICAS Admin posted: "Final Examination Schedule for AY 2024–2025 Second Semester is now available."', 'time' => '1 day ago', 'read' => false],
+            ['id' => 4, 'type' => 'enrollment', 'title' => 'Enrollment Approved', 'body' => 'Your enrollment request for Physics I (PHY201) has been approved by the administrator.', 'time' => '2 days ago', 'read' => true],
+            ['id' => 5, 'type' => 'grade', 'title' => 'Grade Released: ENG101', 'body' => 'Your grade for English Composition Draft 1: Descriptive Essay has been posted. Score: 88/100.', 'time' => '3 days ago', 'read' => true],
+            ['id' => 6, 'type' => 'forum', 'title' => 'Reply to your post', 'body' => 'Prof. Santos replied to your forum post: "Can we use other citation styles?" — Check the forum for the response.', 'time' => '4 days ago', 'read' => true],
+            ['id' => 7, 'type' => 'announcement', 'title' => 'Enrollment Period Reminder', 'body' => 'The enrollment period for Second Semester ends on January 31. Please complete your enrollment now.', 'time' => '1 week ago', 'read' => true],
+        ];
+        $unreadCount = collect($notifications)->where('read', false)->count();
+        return view('student.notifications', compact('notifications', 'unreadCount'));
+    }
+
+    public function settings(): View
+    {
+        $user = Auth::user();
+        return view('student.settings', compact('user'));
+    }
+
     public function enrollment(): View
     {
         $catalogByCode = collect($this->enrollmentCatalog())->keyBy('code');
 
-        $enrolledRecords = StudentModuleRecord::query()
+        // All records for this user (including dropped ones)
+        $allRecords = StudentModuleRecord::query()
             ->where('user_id', Auth::id())
             ->orderBy('module_name')
             ->get();
 
-        $enrolledCodes = $enrolledRecords
+        // Active records (not dropped) are treated as enrolled/reserved for availability checks
+        $activeRecords = $allRecords->filter(function (StudentModuleRecord $r): bool {
+            return $r->enrollment_status !== 'dropped';
+        });
+
+        $enrolledCodes = $activeRecords
             ->pluck('module_code')
             ->map(function (?string $moduleCode): string {
                 return strtoupper((string) $moduleCode);
@@ -35,12 +109,13 @@ class StudentController extends Controller
             ->values()
             ->all();
 
-        $enrolledModules = $enrolledRecords
+        $enrolledModules = $allRecords
             ->map(function (StudentModuleRecord $record) use ($catalogByCode): array {
                 /** @var array<string, mixed>|null $catalogItem */
                 $catalogItem = $catalogByCode->get(strtoupper((string) $record->module_code));
 
                 return [
+                    'id' => $record->id,
                     'name' => $record->module_name,
                     'code' => strtoupper((string) $record->module_code),
                     'instructor' => $record->instructor ?? ($catalogItem['instructor'] ?? 'Instructor to be announced'),
@@ -48,6 +123,8 @@ class StudentController extends Controller
                     'units' => $catalogItem['units'] ?? null,
                     'description' => $catalogItem['description'] ?? 'Course details will appear once available.',
                     'enrolled_on' => $record->created_at?->format('M j, Y'),
+                    'status' => $record->enrollment_status ?? 'pending',
+                    'section' => $record->section,
                 ];
             })
             ->values()
@@ -77,6 +154,8 @@ class StudentController extends Controller
             'module_code' => (string) $module['code'],
             'instructor' => (string) $module['instructor'],
             'schedule' => (string) $module['schedule'],
+            'section' => null,
+            'enrollment_status' => 'pending',
             'grade_percent' => null,
             'documents_count' => 0,
             'upcoming_assessment_title' => null,
@@ -241,6 +320,19 @@ class StudentController extends Controller
             ->with('status', 'Module record deleted successfully.');
     }
 
+    public function dropEnrollment(StudentModuleRecord $moduleRecord): RedirectResponse
+    {
+        if ((int) $moduleRecord->user_id !== (int) Auth::id()) {
+            abort(403);
+        }
+
+        $moduleRecord->update(['enrollment_status' => 'dropped']);
+
+        return redirect()
+            ->route('student.enrollment')
+            ->with('status', 'You have successfully dropped from '.$moduleRecord->module_name.'.');
+    }
+
     /**
      * @return array<int, array{code: string, name: string, instructor: string, schedule: string, units: int, description: string}>
      */
@@ -330,16 +422,6 @@ class StudentController extends Controller
         return view('student.grades', compact('summary', 'courses', 'majorExams'));
     }
 
-    public function classrooms(): View
-    {
-        $classrooms = [
-            ['name' => 'Advanced Mathematics', 'code' => 'MATH301', 'instructor' => 'Dr. Maria Fernandez', 'schedule' => 'Mon, Wed, Fri 9:00 AM', 'quizzes' => 1],
-            ['name' => 'Physics I', 'code' => 'PHY201', 'instructor' => 'Mr. Paulo Navarro', 'schedule' => 'Tue, Thu 10:00 AM', 'quizzes' => 1],
-            ['name' => 'World History', 'code' => 'HIST201', 'instructor' => 'Mrs. Grace Bautista', 'schedule' => 'Mon, Wed 2:00 PM', 'quizzes' => 0],
-        ];
-
-        return view('student.classrooms', compact('classrooms'));
-    }
 
     public function documents(): View
     {
@@ -378,4 +460,37 @@ class StudentController extends Controller
 
         return view('student.forum', compact('posts', 'topics', 'courses'));
     }
+
+    public function attendance(): View
+    {
+        $summary = [
+            ['label' => 'Total Days',  'value' => '45', 'color' => 'slate'],
+            ['label' => 'Present',     'value' => '38', 'color' => 'emerald'],
+            ['label' => 'Absent',      'value' => '4',  'color' => 'rose'],
+            ['label' => 'Late',        'value' => '3',  'color' => 'amber'],
+            ['label' => 'Attendance Rate', 'value' => '84%', 'color' => 'sky'],
+        ];
+
+        $records = [
+            ['date' => 'Apr 21, 2026', 'class' => 'MATH301', 'course' => 'Advanced Mathematics',    'faculty' => 'Dr. Maria Fernandez', 'status' => 'Present'],
+            ['date' => 'Apr 21, 2026', 'class' => 'PHY201',  'course' => 'Physics I',               'faculty' => 'Mr. Paulo Navarro',   'status' => 'Present'],
+            ['date' => 'Apr 20, 2026', 'class' => 'HIST201', 'course' => 'World History',           'faculty' => 'Mrs. Grace Bautista', 'status' => 'Late'],
+            ['date' => 'Apr 20, 2026', 'class' => 'MATH301', 'course' => 'Advanced Mathematics',    'faculty' => 'Dr. Maria Fernandez', 'status' => 'Present'],
+            ['date' => 'Apr 18, 2026', 'class' => 'PHY201',  'course' => 'Physics I',               'faculty' => 'Mr. Paulo Navarro',   'status' => 'Absent'],
+            ['date' => 'Apr 18, 2026', 'class' => 'HIST201', 'course' => 'World History',           'faculty' => 'Mrs. Grace Bautista', 'status' => 'Present'],
+            ['date' => 'Apr 17, 2026', 'class' => 'MATH301', 'course' => 'Advanced Mathematics',    'faculty' => 'Dr. Maria Fernandez', 'status' => 'Present'],
+            ['date' => 'Apr 16, 2026', 'class' => 'PHY201',  'course' => 'Physics I',               'faculty' => 'Mr. Paulo Navarro',   'status' => 'Present'],
+            ['date' => 'Apr 15, 2026', 'class' => 'HIST201', 'course' => 'World History',           'faculty' => 'Mrs. Grace Bautista', 'status' => 'Absent'],
+            ['date' => 'Apr 14, 2026', 'class' => 'MATH301', 'course' => 'Advanced Mathematics',    'faculty' => 'Dr. Maria Fernandez', 'status' => 'Late'],
+        ];
+
+        $courseBreakdown = [
+            ['code' => 'MATH301', 'name' => 'Advanced Mathematics', 'present' => 14, 'absent' => 1, 'late' => 1, 'total' => 16],
+            ['code' => 'PHY201',  'name' => 'Physics I',            'present' => 13, 'absent' => 2, 'late' => 1, 'total' => 16],
+            ['code' => 'HIST201', 'name' => 'World History',        'present' => 11, 'absent' => 1, 'late' => 1, 'total' => 13],
+        ];
+
+        return view('student.attendance', compact('summary', 'records', 'courseBreakdown'));
+    }
 }
+

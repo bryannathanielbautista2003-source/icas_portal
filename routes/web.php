@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ClassroomController;
 use App\Http\Controllers\FacultyController;
 use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Auth;
@@ -59,25 +60,46 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('student')->middleware('role:student')->name('student.')->group(function () {
         Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('dashboard');
+        Route::get('/profile', [StudentController::class, 'profile'])->name('profile');
         Route::get('/announcements', [AnnouncementController::class, 'studentIndex'])->name('announcements.index');
         Route::get('/enrollment', [StudentController::class, 'enrollment'])->name('enrollment');
         Route::post('/enrollment', [StudentController::class, 'storeEnrollment'])->name('enrollment.store');
+        Route::post('/enrollment/{moduleRecord}/drop', [StudentController::class, 'dropEnrollment'])->name('enrollment.drop');
         Route::post('/modules/records', [StudentController::class, 'storeModuleRecord'])->name('modules.records.store');
         Route::delete('/modules/records/{moduleRecord}', [StudentController::class, 'deleteModuleRecord'])->name('modules.records.destroy');
         Route::get('/grades', [StudentController::class, 'grades'])->name('grades');
-        Route::get('/classrooms', [StudentController::class, 'classrooms'])->name('classrooms');
+        Route::get('/classrooms', [ClassroomController::class, 'studentIndex'])->name('classrooms');
+        Route::post('/classrooms/{classroom}/enroll', [ClassroomController::class, 'studentEnroll'])->name('classrooms.enroll');
+        Route::get('/attendance', [StudentController::class, 'attendance'])->name('attendance');
         Route::get('/documents', [StudentController::class, 'documents'])->name('documents');
         Route::get('/forum', [StudentController::class, 'forum'])->name('forum');
+        Route::get('/schedule', [StudentController::class, 'schedule'])->name('schedule');
+        Route::get('/notifications', [StudentController::class, 'notifications'])->name('notifications');
+        Route::get('/settings', [StudentController::class, 'settings'])->name('settings');
     });
 
     Route::prefix('faculty')->middleware('role:faculty')->name('faculty.')->group(function () {
         Route::get('/dashboard', [FacultyController::class, 'dashboard'])->name('dashboard');
         Route::get('/announcements', [AnnouncementController::class, 'facultyIndex'])->name('announcements.index');
         Route::get('/students', [FacultyController::class, 'students'])->name('students');
+        Route::get('/students/{slug}', [FacultyController::class, 'subjectShow'])->name('students.show');
+        Route::get('/student-details/{id}', [FacultyController::class, 'studentShow'])->name('student.details');
         Route::get('/grades', [FacultyController::class, 'grades'])->name('grades');
         Route::get('/grades/export', [FacultyController::class, 'exportAttendanceRecords'])->name('grades.export');
         Route::post('/grades/records', [FacultyController::class, 'storeAttendanceRecord'])->name('grades.records.store');
         Route::patch('/grades/records/{attendanceRecord}', [FacultyController::class, 'updateAttendanceRecord'])->name('grades.records.update');
+        Route::get('/enrollments', [FacultyController::class, 'enrollments'])->name('enrollments');
+        Route::patch('/enrollments/{moduleRecord}/approve', [FacultyController::class, 'approveEnrollment'])->name('enrollments.approve');
+        Route::patch('/enrollments/{moduleRecord}/section', [FacultyController::class, 'assignSection'])->name('enrollments.section');
+        Route::get('/classrooms', [ClassroomController::class, 'facultyIndex'])->name('classrooms');
+        Route::get('/classrooms/create', [ClassroomController::class, 'facultyCreate'])->name('classrooms.create');
+        Route::post('/classrooms', [ClassroomController::class, 'facultyStore'])->name('classrooms.store');
+        Route::get('/classrooms/{classroom}/edit', [ClassroomController::class, 'facultyEdit'])->name('classrooms.edit');
+        Route::put('/classrooms/{classroom}', [ClassroomController::class, 'facultyUpdate'])->name('classrooms.update');
+        Route::get('/classrooms/{classroom}', [ClassroomController::class, 'facultyShow'])->name('classrooms.show');
+        Route::get('/forum', [FacultyController::class, 'forum'])->name('forum');
+        Route::get('/profile', [FacultyController::class, 'profile'])->name('profile');
+        Route::get('/schedule', [FacultyController::class, 'schedule'])->name('schedule');
     });
 
     Route::prefix('admin')->middleware('role:admin')->name('admin.')->group(function () {
@@ -86,8 +108,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/attendance', [AdminController::class, 'attendance'])->name('attendance');
         Route::get('/grades', [AdminController::class, 'grades'])->name('grades');
         Route::get('/grades/generator', [AdminController::class, 'exportGrades'])->name('grades.export');
-        Route::get('/classrooms', [AdminController::class, 'classrooms'])->name('classrooms');
+        Route::get('/enrollments', [AdminController::class, 'enrollments'])->name('enrollments');
+        Route::patch('/enrollments/{moduleRecord}/approve', [AdminController::class, 'approveEnrollment'])->name('enrollments.approve');
+        Route::patch('/enrollments/{moduleRecord}/section', [AdminController::class, 'assignSection'])->name('enrollments.section');
+        Route::patch('/enrollments/{moduleRecord}/encode', [AdminController::class, 'encodeCourse'])->name('enrollments.encode');
+        Route::get('/classrooms', [ClassroomController::class, 'adminIndex'])->name('classrooms');
         Route::get('/documents', [AdminController::class, 'documents'])->name('documents');
         Route::get('/forum', [AdminController::class, 'forum'])->name('forum');
+        Route::get('/audit-trail', [AdminController::class, 'auditTrail'])->name('audit-trail');
+        Route::get('/system-monitoring', [AdminController::class, 'systemMonitoring'])->name('system-monitoring');
+        Route::get('/users', [AdminController::class, 'users'])->name('users');
+        Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
     });
 });

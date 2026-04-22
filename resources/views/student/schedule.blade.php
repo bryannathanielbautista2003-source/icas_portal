@@ -1,0 +1,74 @@
+@extends('layouts.student')
+@section('title', 'My Schedule')
+@section('pageDescription', 'Your weekly class timetable for the current semester.')
+@section('content')
+<div class="space-y-6">
+    <section class="rounded-3xl bg-gradient-to-r from-green-500 to-emerald-600 p-6 shadow-md text-white">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h2 class="text-2xl font-bold">My Class Schedule</h2>
+                <p class="mt-1 text-green-100 text-sm">AY 2024–2025 · Second Semester</p>
+            </div>
+            <div class="flex gap-4">
+                <div class="text-center">
+                    <p class="text-3xl font-black">{{ $totalSubjects }}</p>
+                    <p class="text-xs text-green-200">Subjects</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-black">{{ $totalUnits }}</p>
+                    <p class="text-xs text-green-200">Units</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @php
+        $days = ['Mon','Tue','Wed','Thu','Fri','Sat'];
+        $subjectColors = [
+            'MATH301' => 'bg-emerald-100 text-emerald-800 border-emerald-300',
+            'ENG101'  => 'bg-violet-100 text-violet-800 border-violet-300',
+            'PHY201'  => 'bg-sky-100 text-sky-800 border-sky-300',
+            'HIST201' => 'bg-amber-100 text-amber-800 border-amber-300',
+            'PE101'   => 'bg-rose-100 text-rose-800 border-rose-300',
+        ];
+        $today = date('D'); // e.g. 'Mon', 'Tue'
+    @endphp
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        @foreach($days as $day)
+            <div class="rounded-3xl bg-white border {{ $today === $day ? 'border-green-400 shadow-md ring-2 ring-green-200' : 'border-slate-200 shadow-sm' }} overflow-hidden">
+                <div class="px-5 py-3.5 flex items-center justify-between {{ $today === $day ? 'bg-green-600 text-white' : 'bg-slate-50 border-b border-slate-200' }}">
+                    <p class="font-bold text-sm tracking-wide">{{ $day }}{{ $today === $day ? ' — Today' : '' }}</p>
+                    <span class="text-xs {{ $today === $day ? 'text-green-200' : 'text-slate-400' }}">{{ count($schedule[$day]) }} class{{ count($schedule[$day]) !== 1 ? 'es' : '' }}</span>
+                </div>
+                <div class="p-4 space-y-3">
+                    @forelse($schedule[$day] as $cls)
+                        @php $clr = $subjectColors[$cls['code']] ?? 'bg-slate-100 text-slate-800 border-slate-300'; @endphp
+                        <div class="rounded-2xl border {{ $clr }} p-3">
+                            <p class="font-bold text-sm">{{ $cls['subject'] }}</p>
+                            <p class="text-xs font-mono mt-0.5 opacity-70">{{ $cls['code'] }}</p>
+                            <div class="mt-2 space-y-0.5 text-xs opacity-80">
+                                <p>⏰ {{ $cls['time'] }}</p>
+                                <p>📍 {{ $cls['room'] }}</p>
+                                <p>👤 {{ $cls['faculty'] }}</p>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-center text-sm text-slate-400 py-6">No classes</p>
+                    @endforelse
+                </div>
+            </div>
+        @endforeach
+    </div>
+
+    {{-- Legend --}}
+    <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-5">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Subject Legend</p>
+        <div class="flex flex-wrap gap-3">
+            @foreach($subjectColors as $code => $cls)
+                <span class="inline-flex rounded-full border {{ $cls }} px-3 py-1 text-xs font-semibold">{{ $code }}</span>
+            @endforeach
+        </div>
+    </section>
+</div>
+@endsection

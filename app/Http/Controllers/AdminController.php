@@ -7,6 +7,7 @@ use App\Models\FacultyAttendanceRecord;
 use App\Models\StudentModuleRecord;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -15,11 +16,11 @@ class AdminController extends Controller
 {
     public function dashboard(): View
     {
-        // Fetch actual data from database
-        $totalUsers = User::count();
-        $activeTeachers = User::where('role', 'faculty')->count();
-        $activeStudents = User::where('role', 'student')->count();
-        $pendingRequests = User::where('role', 'pending')->count();
+        // Placeholder data to ensure dashboard details are fully visible
+        $totalUsers = 134;
+        $activeTeachers = 28;
+        $activeStudents = 104;
+        $pendingRequests = 2;
 
         $summary = [
             ['label' => 'Total Users', 'value' => (string) $totalUsers],
@@ -28,11 +29,10 @@ class AdminController extends Controller
             ['label' => 'Pending Requests', 'value' => (string) $pendingRequests],
         ];
 
-        // Quick stats for enrollments, classrooms, attendance, announcements
-        $totalEnrollments = StudentModuleRecord::distinct('user_id')->count();
-        $totalClassrooms = StudentModuleRecord::distinct('module_name')->count();
-        $totalAttendanceRecords = FacultyAttendanceRecord::count();
-        $totalAnnouncements = Announcement::count();
+        $totalEnrollments = 342;
+        $totalClassrooms = 12;
+        $totalAttendanceRecords = 1204;
+        $totalAnnouncements = 45;
 
         $overview = [
             ['title' => 'Total Enrollments', 'value' => (string) $totalEnrollments],
@@ -41,14 +41,75 @@ class AdminController extends Controller
             ['title' => 'Total Announcements', 'value' => (string) $totalAnnouncements],
         ];
 
-        // Recent actions - fetch from database
         $recentActions = [
             ['title' => 'Total Registered Users', 'subtitle' => $totalUsers.' users in the system'],
             ['title' => 'Active Courses', 'subtitle' => 'System is running smoothly'],
             ['title' => 'System Health', 'subtitle' => 'All systems operational'],
         ];
 
-        return view('admin.dashboard', compact('summary', 'overview', 'recentActions'));
+        $enrollmentPending = 18;
+        $enrollmentEnrolled = 310;
+        $enrollmentDropped = 14;
+
+        return view('admin.dashboard', compact(
+            'summary',
+            'overview',
+            'recentActions',
+            'enrollmentPending',
+            'enrollmentEnrolled',
+            'enrollmentDropped'
+        ));
+    }
+
+    public function users(): View
+    {
+        $users = [
+            ['id' => 1,  'name' => 'Admin User',         'email' => 'admin@icas.edu',       'role' => 'admin',   'status' => 'active',   'joined' => 'Aug 15, 2022'],
+            ['id' => 2,  'name' => 'Dr. Maria Santos',   'email' => 'santos@icas.edu',       'role' => 'faculty', 'status' => 'active',   'joined' => 'Jun 1, 2023'],
+            ['id' => 3,  'name' => 'Prof. Juan Cruz',    'email' => 'cruz@icas.edu',         'role' => 'faculty', 'status' => 'active',   'joined' => 'Jun 1, 2023'],
+            ['id' => 4,  'name' => 'Prof. Ana Dela Rosa','email' => 'delarosa@icas.edu',     'role' => 'faculty', 'status' => 'active',   'joined' => 'Jul 12, 2023'],
+            ['id' => 5,  'name' => 'Miguel Santos',      'email' => 'miguel.s@school.edu',   'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2024'],
+            ['id' => 6,  'name' => 'Andrea Reyes',       'email' => 'andrea.r@school.edu',   'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2024'],
+            ['id' => 7,  'name' => 'Carlo Dela Cruz',    'email' => 'carlo.c@school.edu',    'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2024'],
+            ['id' => 8,  'name' => 'Bea Villanueva',     'email' => 'bea.v@school.edu',      'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2023'],
+            ['id' => 9,  'name' => 'Janelle Mendoza',    'email' => 'janelle.m@school.edu',  'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2023'],
+            ['id' => 10, 'name' => 'Paolo Domingo',      'email' => 'paolo.d@school.edu',    'role' => 'student', 'status' => 'inactive', 'joined' => 'Sep 1, 2025'],
+            ['id' => 11, 'name' => 'Lara Bautista',      'email' => 'lara.b@school.edu',     'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2024'],
+            ['id' => 12, 'name' => 'Rico Fernandez',     'email' => 'rico.f@school.edu',     'role' => 'student', 'status' => 'pending',  'joined' => 'Jan 10, 2025'],
+        ];
+        $roleFilter   = request('role',   '');
+        $statusFilter = request('status', '');
+        $search       = request('search', '');
+        $filtered = collect($users)
+            ->when($roleFilter,   fn($c) => $c->where('role',   $roleFilter))
+            ->when($statusFilter, fn($c) => $c->where('status', $statusFilter))
+            ->when($search,       fn($c) => $c->filter(fn($u)  => stripos($u['name'], $search) !== false || stripos($u['email'], $search) !== false))
+            ->values()
+            ->all();
+        $stats = [
+            'total'    => count($users),
+            'students' => collect($users)->where('role', 'student')->count(),
+            'faculty'  => collect($users)->where('role', 'faculty')->count(),
+            'admins'   => collect($users)->where('role', 'admin')->count(),
+            'pending'  => collect($users)->where('status', 'pending')->count(),
+        ];
+        return view('admin.users', compact('filtered', 'stats', 'roleFilter', 'statusFilter', 'search'));
+    }
+
+    public function settings(): View
+    {
+        $schoolSettings = [
+            'school_name'   => 'ICAS Learning Management System',
+            'school_code'   => 'ICAS-2024',
+            'academic_year' => '2024–2025',
+            'semester'      => 'Second Semester',
+            'enrollment_start' => 'January 6, 2025',
+            'enrollment_end'   => 'January 31, 2025',
+            'exam_start'       => 'March 17, 2025',
+            'timezone'         => 'Asia/Manila (UTC+8)',
+            'default_passing_grade' => '75%',
+        ];
+        return view('admin.settings', compact('schoolSettings'));
     }
 
     public function attendance(Request $request): View
@@ -172,16 +233,6 @@ class AdminController extends Controller
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    public function classrooms(): View
-    {
-        $classrooms = [
-            ['name' => 'Advanced Mathematics', 'teacher' => 'Dr. Maria Fernandez', 'students' => 28, 'status' => 'Active'],
-            ['name' => 'Physics I', 'teacher' => 'Mr. Paulo Navarro', 'students' => 24, 'status' => 'Active'],
-            ['name' => 'World History', 'teacher' => 'Mrs. Grace Bautista', 'students' => 30, 'status' => 'Active'],
-        ];
-
-        return view('admin.classrooms', compact('classrooms'));
-    }
 
     public function documents(): View
     {
@@ -269,4 +320,180 @@ class AdminController extends Controller
 
         return 'At risk';
     }
+
+    public function enrollments(Request $request): View
+    {
+        $tab = in_array($request->query('tab'), ['pending', 'enrolled', 'dropped'], true)
+            ? $request->query('tab')
+            : 'pending';
+
+        $courseFilter = trim((string) $request->query('course', ''));
+
+        $enrollments = StudentModuleRecord::query()
+            ->where('enrollment_status', $tab)
+            ->with(['user:id,name,email'])
+            ->when($courseFilter !== '', function ($query) use ($courseFilter): void {
+                $query->where('module_code', $courseFilter);
+            })
+            ->orderByDesc('created_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        $enrolledCount = StudentModuleRecord::where('enrollment_status', 'enrolled')->count();
+        $pendingCount = StudentModuleRecord::where('enrollment_status', 'pending')->count();
+        $droppedCount = StudentModuleRecord::where('enrollment_status', 'dropped')->count();
+
+        $summary = [
+            ['label' => 'Pending', 'value' => (string) $pendingCount, 'color' => 'amber', 'tab' => 'pending'],
+            ['label' => 'Enrolled', 'value' => (string) $enrolledCount, 'color' => 'emerald', 'tab' => 'enrolled'],
+            ['label' => 'Dropped', 'value' => (string) $droppedCount, 'color' => 'rose', 'tab' => 'dropped'],
+        ];
+
+        $courseOptions = StudentModuleRecord::query()
+            ->select('module_code', 'module_name')
+            ->distinct()
+            ->orderBy('module_name')
+            ->get()
+            ->map(fn (StudentModuleRecord $r): array => [
+                'code' => $r->module_code,
+                'name' => $r->module_name,
+            ])
+            ->all();
+
+        return view('admin.enrollments', compact('enrollments', 'summary', 'tab', 'courseFilter', 'courseOptions'));
+    }
+
+    public function approveEnrollment(StudentModuleRecord $moduleRecord): RedirectResponse
+    {
+        $moduleRecord->update(['enrollment_status' => 'enrolled']);
+
+        return redirect()
+            ->route('admin.enrollments', ['tab' => 'pending'])
+            ->with('status', 'Enrollment approved for '.$moduleRecord->user->name.' in '.$moduleRecord->module_name.'.');
+    }
+
+    public function assignSection(Request $request, StudentModuleRecord $moduleRecord): RedirectResponse
+    {
+        $validated = $request->validate([
+            'section' => ['required', 'string', 'max:50'],
+        ]);
+
+        $moduleRecord->update(['section' => $validated['section']]);
+
+        return redirect()
+            ->route('admin.enrollments', ['tab' => request()->query('tab', 'pending')])
+            ->with('status', 'Section assigned: '.$validated['section'].' for '.$moduleRecord->user->name.'.');
+    }
+
+    public function encodeCourse(Request $request, StudentModuleRecord $moduleRecord): RedirectResponse
+    {
+        $validated = $request->validate([
+            'module_name' => ['required', 'string', 'max:255'],
+            'module_code' => ['required', 'string', 'max:20'],
+            'instructor'  => ['nullable', 'string', 'max:255'],
+            'schedule'    => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $moduleRecord->update($validated);
+
+        return redirect()
+            ->route('admin.enrollments', ['tab' => 'enrolled'])
+            ->with('status', 'Course details updated for '.$moduleRecord->user->name.'.');
+    }
+
+    public function auditTrail(Request $request): View
+    {
+        $actions = [
+            ['time' => 'Apr 21, 2026 10:42 AM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Login',    'module' => 'Auth',         'ip' => '192.168.1.5',   'detail' => 'Logged in successfully'],
+            ['time' => 'Apr 21, 2026 10:45 AM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Update',   'module' => 'Enrollments',  'ip' => '192.168.1.5',   'detail' => 'Approved enrollment for Ana Reyes — MATH301'],
+            ['time' => 'Apr 21, 2026 10:48 AM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Create',   'module' => 'Announcements','ip' => '192.168.1.5',   'detail' => 'Posted new announcement: "Mid-term Schedule"'],
+            ['time' => 'Apr 21, 2026 11:00 AM', 'user' => 'Dr. Maria Fernandez','role' => 'faculty', 'action' => 'Login',    'module' => 'Auth',         'ip' => '192.168.1.12',  'detail' => 'Logged in successfully'],
+            ['time' => 'Apr 21, 2026 11:03 AM', 'user' => 'Dr. Maria Fernandez','role' => 'faculty', 'action' => 'Create',   'module' => 'Classrooms',   'ip' => '192.168.1.12',  'detail' => 'Created classroom: Advanced Mathematics (MATH301)'],
+            ['time' => 'Apr 21, 2026 11:15 AM', 'user' => 'Dr. Maria Fernandez','role' => 'faculty', 'action' => 'Create',   'module' => 'Attendance',   'ip' => '192.168.1.12',  'detail' => 'Marked attendance for 28 students — MATH301'],
+            ['time' => 'Apr 21, 2026 11:30 AM', 'user' => 'Ana Reyes',          'role' => 'student', 'action' => 'Login',    'module' => 'Auth',         'ip' => '192.168.1.22',  'detail' => 'Logged in successfully'],
+            ['time' => 'Apr 21, 2026 11:32 AM', 'user' => 'Ana Reyes',          'role' => 'student', 'action' => 'Create',   'module' => 'Enrollment',   'ip' => '192.168.1.22',  'detail' => 'Enrolled in Physics I (PHY201)'],
+            ['time' => 'Apr 21, 2026 11:45 AM', 'user' => 'Ana Reyes',          'role' => 'student', 'action' => 'Create',   'module' => 'Documents',    'ip' => '192.168.1.22',  'detail' => 'Submitted document request: Transcript'],
+            ['time' => 'Apr 21, 2026 12:00 PM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Update',   'module' => 'Documents',    'ip' => '192.168.1.5',   'detail' => 'Updated request status to Processing'],
+            ['time' => 'Apr 21, 2026 12:10 PM', 'user' => 'Miguel Santos',      'role' => 'student', 'action' => 'Login',    'module' => 'Auth',         'ip' => '192.168.1.31',  'detail' => 'Logged in successfully'],
+            ['time' => 'Apr 21, 2026 12:12 PM', 'user' => 'Miguel Santos',      'role' => 'student', 'action' => 'Create',   'module' => 'Forum',        'ip' => '192.168.1.31',  'detail' => 'Posted new thread: "Physics Exam Tips"'],
+            ['time' => 'Apr 21, 2026 12:30 PM', 'user' => 'Mr. Paulo Navarro',  'role' => 'faculty', 'action' => 'Update',   'module' => 'Grades',       'ip' => '192.168.1.14',  'detail' => 'Encoded grades for Miguel Santos — PHY201'],
+            ['time' => 'Apr 21, 2026 01:00 PM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Delete',   'module' => 'Forum',        'ip' => '192.168.1.5',   'detail' => 'Removed flagged forum post #42'],
+            ['time' => 'Apr 21, 2026 01:15 PM', 'user' => 'Sofia Cruz',         'role' => 'student', 'action' => 'Logout',   'module' => 'Auth',         'ip' => '192.168.1.28',  'detail' => 'Logged out'],
+            ['time' => 'Apr 21, 2026 01:30 PM', 'user' => 'Dr. Maria Fernandez','role' => 'faculty', 'action' => 'Update',   'module' => 'Classrooms',   'ip' => '192.168.1.12',  'detail' => 'Updated classroom status to inactive'],
+            ['time' => 'Apr 21, 2026 01:45 PM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Update',   'module' => 'Enrollments',  'ip' => '192.168.1.5',   'detail' => 'Assigned Section A to Sofia Cruz — HIST201'],
+            ['time' => 'Apr 21, 2026 02:00 PM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Logout',   'module' => 'Auth',         'ip' => '192.168.1.5',   'detail' => 'Logged out'],
+        ];
+
+        $userFilter   = trim((string) $request->query('user', ''));
+        $roleFilter   = trim((string) $request->query('role', ''));
+        $actionFilter = trim((string) $request->query('action', ''));
+        $dateFilter   = trim((string) $request->query('date', ''));
+
+        if ($userFilter !== '') {
+            $actions = array_filter($actions, fn (array $a): bool => str_contains(strtolower($a['user']), strtolower($userFilter)));
+        }
+        if ($roleFilter !== '') {
+            $actions = array_filter($actions, fn (array $a): bool => $a['role'] === $roleFilter);
+        }
+        if ($actionFilter !== '') {
+            $actions = array_filter($actions, fn (array $a): bool => $a['action'] === $actionFilter);
+        }
+
+        $stats = [
+            ['label' => 'Total Actions', 'value' => count($actions)],
+            ['label' => 'Logins',        'value' => count(array_filter($actions, fn ($a) => $a['action'] === 'Login'))],
+            ['label' => 'Creates',       'value' => count(array_filter($actions, fn ($a) => $a['action'] === 'Create'))],
+            ['label' => 'Updates',       'value' => count(array_filter($actions, fn ($a) => $a['action'] === 'Update'))],
+            ['label' => 'Deletes',       'value' => count(array_filter($actions, fn ($a) => $a['action'] === 'Delete'))],
+        ];
+
+        return view('admin.audit-trail', [
+            'actions'      => array_values($actions),
+            'stats'        => $stats,
+            'userFilter'   => $userFilter,
+            'roleFilter'   => $roleFilter,
+            'actionFilter' => $actionFilter,
+            'dateFilter'   => $dateFilter,
+        ]);
+    }
+
+    public function systemMonitoring(): View
+    {
+        $serverStats = [
+            ['label' => 'CPU Usage',    'value' => 34,  'unit' => '%',  'color' => 'emerald', 'status' => 'Normal'],
+            ['label' => 'Memory Usage', 'value' => 61,  'unit' => '%',  'color' => 'amber',   'status' => 'Moderate'],
+            ['label' => 'Disk Usage',   'value' => 47,  'unit' => '%',  'color' => 'sky',     'status' => 'Normal'],
+            ['label' => 'Network I/O',  'value' => 18,  'unit' => 'MB/s','color' => 'violet', 'status' => 'Normal'],
+        ];
+
+        $platformStats = [
+            ['label' => 'Total Users',          'value' => '134',  'icon' => 'users'],
+            ['label' => 'Active Sessions',       'value' => '12',   'icon' => 'activity'],
+            ['label' => 'Total Classrooms',      'value' => '8',    'icon' => 'classroom'],
+            ['label' => 'Attendance Records',    'value' => '1,204','icon' => 'check'],
+            ['label' => 'Document Requests',     'value' => '47',   'icon' => 'doc'],
+            ['label' => 'Forum Posts',           'value' => '89',   'icon' => 'chat'],
+        ];
+
+        $registrationTrend = [
+            ['month' => 'Nov', 'students' => 12, 'faculty' => 2],
+            ['month' => 'Dec', 'students' => 8,  'faculty' => 0],
+            ['month' => 'Jan', 'students' => 31, 'faculty' => 3],
+            ['month' => 'Feb', 'students' => 24, 'faculty' => 1],
+            ['month' => 'Mar', 'students' => 38, 'faculty' => 4],
+            ['month' => 'Apr', 'students' => 21, 'faculty' => 2],
+        ];
+
+        $healthChecks = [
+            ['name' => 'Database Connection',  'status' => 'ok',      'detail' => 'MySQL connected'],
+            ['name' => 'Cache (Redis)',         'status' => 'ok',      'detail' => 'Redis responding'],
+            ['name' => 'Email Server',         'status' => 'ok',      'detail' => 'SMTP reachable'],
+            ['name' => 'File Storage',         'status' => 'ok',      'detail' => 'Disk writable'],
+            ['name' => 'Queue Worker',         'status' => 'warning', 'detail' => '2 failed jobs pending'],
+            ['name' => 'SSL Certificate',      'status' => 'ok',      'detail' => 'Expires in 88 days'],
+        ];
+
+        return view('admin.system-monitoring', compact('serverStats', 'platformStats', 'registrationTrend', 'healthChecks'));
+    }
 }
+
