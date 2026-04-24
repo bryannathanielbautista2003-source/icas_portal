@@ -395,8 +395,7 @@ class FacultyController extends Controller
             'search',
             'status',
             'student_class',
-            'from_date',
-            'to_date',
+            'date',
         ]))
             ->filter(function (?string $value): bool {
                 return $value !== null && $value !== '';
@@ -409,7 +408,7 @@ class FacultyController extends Controller
     }
 
     /**
-     * @return array{search: string, status: string, student_class: string, from_date: string, to_date: string}
+     * @return array{search: string, status: string, student_class: string, date: string}
      */
     private function resolveGradesFilters(Request $request): array
     {
@@ -423,13 +422,12 @@ class FacultyController extends Controller
             'search' => trim((string) $request->query('search', '')),
             'status' => $status,
             'student_class' => trim((string) $request->query('student_class', '')),
-            'from_date' => trim((string) $request->query('from_date', '')),
-            'to_date' => trim((string) $request->query('to_date', '')),
+            'date' => trim((string) $request->query('date', '')),
         ];
     }
 
     /**
-     * @param  array{search: string, status: string, student_class: string, from_date: string, to_date: string}  $filters
+     * @param  array{search: string, status: string, student_class: string, date: string}  $filters
      */
     private function queryAttendanceRecords(array $filters): Builder
     {
@@ -444,11 +442,8 @@ class FacultyController extends Controller
             ->when($filters['student_class'] !== '', function (Builder $query) use ($filters): void {
                 $query->where('student_class', $filters['student_class']);
             })
-            ->when($filters['from_date'] !== '', function (Builder $query) use ($filters): void {
-                $query->whereDate('attendance_date', '>=', $filters['from_date']);
-            })
-            ->when($filters['to_date'] !== '', function (Builder $query) use ($filters): void {
-                $query->whereDate('attendance_date', '<=', $filters['to_date']);
+            ->when($filters['date'] !== '', function (Builder $query) use ($filters): void {
+                $query->whereDate('attendance_date', $filters['date']);
             });
     }
 
@@ -461,7 +456,8 @@ class FacultyController extends Controller
         $courseFilter = trim((string) $request->query('course', ''));
 
         $enrollments = StudentModuleRecord::query()
-            ->where('enrollment_status', $tab)
+            ->when($tab === 'enrolled', fn($q) => $q->whereIn('enrollment_status', ['faculty_approved', 'enrolled']))
+            ->when($tab !== 'enrolled', fn($q) => $q->where('enrollment_status', $tab))
             ->with(['user:id,name,email'])
             ->when($courseFilter !== '', function ($query) use ($courseFilter): void {
                 $query->where('module_code', $courseFilter);
@@ -470,7 +466,7 @@ class FacultyController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $enrolledCount = StudentModuleRecord::where('enrollment_status', 'enrolled')->count();
+        $enrolledCount = StudentModuleRecord::whereIn('enrollment_status', ['faculty_approved', 'enrolled'])->count();
         $pendingCount  = StudentModuleRecord::where('enrollment_status', 'pending')->count();
         $droppedCount  = StudentModuleRecord::where('enrollment_status', 'dropped')->count();
 
@@ -496,11 +492,11 @@ class FacultyController extends Controller
 
     public function approveEnrollment(StudentModuleRecord $moduleRecord): RedirectResponse
     {
-        $moduleRecord->update(['enrollment_status' => 'enrolled']);
+        $moduleRecord->update(['enrollment_status' => 'faculty_approved']);
 
         return redirect()
             ->route('faculty.enrollments', ['tab' => 'pending'])
-            ->with('status', 'Enrollment approved for '.$moduleRecord->user->name.' in '.$moduleRecord->module_name.'.');
+            ->with('status', 'Enrollment approved for '.$moduleRecord->user->name.' in '.$moduleRecord->module_name.'. Waiting for Admin verification.');
     }
 
     public function assignSection(Request $request, StudentModuleRecord $moduleRecord): RedirectResponse

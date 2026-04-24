@@ -81,6 +81,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('faculty')->middleware('role:faculty')->name('faculty.')->group(function () {
         Route::get('/dashboard', [FacultyController::class, 'dashboard'])->name('dashboard');
         Route::get('/announcements', [AnnouncementController::class, 'facultyIndex'])->name('announcements.index');
+        Route::post('/announcements', [AnnouncementController::class, 'facultyStore'])->name('announcements.store');
         Route::get('/students', [FacultyController::class, 'students'])->name('students');
         Route::get('/students/{slug}', [FacultyController::class, 'subjectShow'])->name('students.show');
         Route::get('/student-details/{id}', [FacultyController::class, 'studentShow'])->name('student.details');
@@ -107,6 +108,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/announcements', [AnnouncementController::class, 'manage'])->name('announcements.index');
         Route::get('/attendance', [AdminController::class, 'attendance'])->name('attendance');
         Route::get('/grades', [AdminController::class, 'grades'])->name('grades');
+        Route::patch('/grades/{moduleRecord}/verify', [AdminController::class, 'verifyGrade'])->name('grades.verify');
         Route::get('/grades/generator', [AdminController::class, 'exportGrades'])->name('grades.export');
         Route::get('/enrollments', [AdminController::class, 'enrollments'])->name('enrollments');
         Route::patch('/enrollments/{moduleRecord}/approve', [AdminController::class, 'approveEnrollment'])->name('enrollments.approve');
@@ -114,6 +116,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/enrollments/{moduleRecord}/encode', [AdminController::class, 'encodeCourse'])->name('enrollments.encode');
         Route::get('/classrooms', [ClassroomController::class, 'adminIndex'])->name('classrooms');
         Route::get('/documents', [AdminController::class, 'documents'])->name('documents');
+        Route::patch('/documents/{documentRequest}', [AdminController::class, 'updateDocument'])->name('documents.update');
         Route::get('/forum', [AdminController::class, 'forum'])->name('forum');
         Route::get('/audit-trail', [AdminController::class, 'auditTrail'])->name('audit-trail');
         Route::get('/system-monitoring', [AdminController::class, 'systemMonitoring'])->name('system-monitoring');

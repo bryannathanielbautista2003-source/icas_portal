@@ -16,11 +16,11 @@ class AdminController extends Controller
 {
     public function dashboard(): View
     {
-        // Placeholder data to ensure dashboard details are fully visible
-        $totalUsers = 134;
-        $activeTeachers = 28;
-        $activeStudents = 104;
-        $pendingRequests = 2;
+        // Dynamic dashboard metrics
+        $totalUsers = User::count();
+        $activeTeachers = User::where('role', 'faculty')->where('status', 'active')->count();
+        $activeStudents = User::where('role', 'student')->where('status', 'active')->count();
+        $pendingRequests = \App\Models\DocumentRequest::where('status', 'Pending')->count();
 
         $summary = [
             ['label' => 'Total Users', 'value' => (string) $totalUsers],
@@ -29,10 +29,10 @@ class AdminController extends Controller
             ['label' => 'Pending Requests', 'value' => (string) $pendingRequests],
         ];
 
-        $totalEnrollments = 342;
-        $totalClassrooms = 12;
-        $totalAttendanceRecords = 1204;
-        $totalAnnouncements = 45;
+        $totalEnrollments = StudentModuleRecord::count();
+        $totalClassrooms = \App\Models\Classroom::count();
+        $totalAttendanceRecords = FacultyAttendanceRecord::count();
+        $totalAnnouncements = Announcement::count();
 
         $overview = [
             ['title' => 'Total Enrollments', 'value' => (string) $totalEnrollments],
@@ -47,9 +47,9 @@ class AdminController extends Controller
             ['title' => 'System Health', 'subtitle' => 'All systems operational'],
         ];
 
-        $enrollmentPending = 18;
-        $enrollmentEnrolled = 310;
-        $enrollmentDropped = 14;
+        $enrollmentPending = StudentModuleRecord::where('enrollment_status', 'pending')->count();
+        $enrollmentEnrolled = StudentModuleRecord::where('enrollment_status', 'enrolled')->count();
+        $enrollmentDropped = StudentModuleRecord::where('enrollment_status', 'dropped')->count();
 
         return view('admin.dashboard', compact(
             'summary',
@@ -63,35 +63,34 @@ class AdminController extends Controller
 
     public function users(): View
     {
-        $users = [
-            ['id' => 1,  'name' => 'Admin User',         'email' => 'admin@icas.edu',       'role' => 'admin',   'status' => 'active',   'joined' => 'Aug 15, 2022'],
-            ['id' => 2,  'name' => 'Dr. Maria Santos',   'email' => 'santos@icas.edu',       'role' => 'faculty', 'status' => 'active',   'joined' => 'Jun 1, 2023'],
-            ['id' => 3,  'name' => 'Prof. Juan Cruz',    'email' => 'cruz@icas.edu',         'role' => 'faculty', 'status' => 'active',   'joined' => 'Jun 1, 2023'],
-            ['id' => 4,  'name' => 'Prof. Ana Dela Rosa','email' => 'delarosa@icas.edu',     'role' => 'faculty', 'status' => 'active',   'joined' => 'Jul 12, 2023'],
-            ['id' => 5,  'name' => 'Miguel Santos',      'email' => 'miguel.s@school.edu',   'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2024'],
-            ['id' => 6,  'name' => 'Andrea Reyes',       'email' => 'andrea.r@school.edu',   'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2024'],
-            ['id' => 7,  'name' => 'Carlo Dela Cruz',    'email' => 'carlo.c@school.edu',    'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2024'],
-            ['id' => 8,  'name' => 'Bea Villanueva',     'email' => 'bea.v@school.edu',      'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2023'],
-            ['id' => 9,  'name' => 'Janelle Mendoza',    'email' => 'janelle.m@school.edu',  'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2023'],
-            ['id' => 10, 'name' => 'Paolo Domingo',      'email' => 'paolo.d@school.edu',    'role' => 'student', 'status' => 'inactive', 'joined' => 'Sep 1, 2025'],
-            ['id' => 11, 'name' => 'Lara Bautista',      'email' => 'lara.b@school.edu',     'role' => 'student', 'status' => 'active',   'joined' => 'Sep 1, 2024'],
-            ['id' => 12, 'name' => 'Rico Fernandez',     'email' => 'rico.f@school.edu',     'role' => 'student', 'status' => 'pending',  'joined' => 'Jan 10, 2025'],
-        ];
         $roleFilter   = request('role',   '');
         $statusFilter = request('status', '');
         $search       = request('search', '');
-        $filtered = collect($users)
-            ->when($roleFilter,   fn($c) => $c->where('role',   $roleFilter))
-            ->when($statusFilter, fn($c) => $c->where('status', $statusFilter))
-            ->when($search,       fn($c) => $c->filter(fn($u)  => stripos($u['name'], $search) !== false || stripos($u['email'], $search) !== false))
-            ->values()
-            ->all();
+        
+        $query = User::query()
+            ->when($roleFilter,   fn($q) => $q->where('role',   $roleFilter))
+            ->when($statusFilter, fn($q) => $q->where('status', $statusFilter))
+            ->when($search,       fn($q) => $q->where(function($q2) use ($search) {
+                $q2->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%");
+            }));
+            
+        $filtered = $query->get()->map(function($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'status' => $user->status,
+                'joined' => $user->created_at ? $user->created_at->format('M j, Y') : 'N/A',
+            ];
+        })->all();
+        
         $stats = [
-            'total'    => count($users),
-            'students' => collect($users)->where('role', 'student')->count(),
-            'faculty'  => collect($users)->where('role', 'faculty')->count(),
-            'admins'   => collect($users)->where('role', 'admin')->count(),
-            'pending'  => collect($users)->where('status', 'pending')->count(),
+            'total'    => User::count(),
+            'students' => User::where('role', 'student')->count(),
+            'faculty'  => User::where('role', 'faculty')->count(),
+            'admins'   => User::where('role', 'admin')->count(),
+            'pending'  => User::where('status', 'pending')->count(),
         ];
         return view('admin.users', compact('filtered', 'stats', 'roleFilter', 'statusFilter', 'search'));
     }
@@ -177,24 +176,50 @@ class AdminController extends Controller
 
     public function grades(): View
     {
-        $grades = StudentModuleRecord::query()
+        $coursesData = StudentModuleRecord::query()
             ->whereNotNull('grade_percent')
-            ->selectRaw('module_name, AVG(grade_percent) as average_grade')
-            ->groupBy('module_name')
-            ->orderBy('module_name')
             ->get()
-            ->map(function (StudentModuleRecord $record): array {
-                $averageGrade = (float) ($record->average_grade ?? 0);
+            ->groupBy('module_code');
 
-                return [
-                    'course' => $record->module_name,
-                    'average' => number_format($averageGrade, 0).'%',
-                    'status' => $this->resolveGradeStatus($averageGrade),
-                ];
-            })
-            ->all();
+        $courses = [];
+        foreach ($coursesData as $code => $records) {
+            $avg = $records->avg('grade_percent');
+            $highest = $records->max('grade_percent');
+            $lowest = $records->min('grade_percent');
+            $passing = $records->count() > 0 ? ($records->where('grade_percent', '>=', 75)->count() / $records->count() * 100) : 0;
+            
+            $dist = [
+                'A' => $records->where('grade_percent', '>=', 90)->count(),
+                'B' => $records->whereBetween('grade_percent', [80, 89.99])->count(),
+                'C' => $records->whereBetween('grade_percent', [75, 79.99])->count(),
+                'D' => $records->whereBetween('grade_percent', [70, 74.99])->count(),
+                'F' => $records->where('grade_percent', '<', 70)->count(),
+            ];
+            
+            $courses[] = [
+                'name' => $records->first()->module_name,
+                'code' => $code,
+                'avg' => round($avg),
+                'highest' => round($highest),
+                'lowest' => round($lowest),
+                'passing' => round($passing),
+                'dist' => $dist,
+            ];
+        }
 
-        return view('admin.grades', compact('grades'));
+        $unverifiedGrades = StudentModuleRecord::query()
+            ->with('user:id,name')
+            ->whereNotNull('grade_percent')
+            ->where('grade_verified', false)
+            ->get();
+
+        return view('admin.grades', compact('courses', 'unverifiedGrades'));
+    }
+
+    public function verifyGrade(StudentModuleRecord $moduleRecord): RedirectResponse
+    {
+        $moduleRecord->update(['grade_verified' => true]);
+        return back()->with('status', 'Grade verified for ' . ($moduleRecord->user->name ?? 'Student'));
     }
 
     public function exportGrades(): StreamedResponse
@@ -236,13 +261,30 @@ class AdminController extends Controller
 
     public function documents(): View
     {
-        $documents = [
-            ['title' => 'Transcript Request', 'status' => 'Approved', 'requested' => '3/25/2026'],
-            ['title' => 'Enrollment Certificate', 'status' => 'Pending', 'requested' => '3/28/2026'],
-            ['title' => 'Policy Manual', 'status' => 'Published', 'requested' => '3/29/2026'],
-        ];
+        $requests = \App\Models\DocumentRequest::with('user:id,name')->latest()->get()->map(function($doc) {
+            return [
+                'id' => $doc->id,
+                'student' => $doc->user->name ?? 'Unknown',
+                'doc' => $doc->document_type,
+                'purpose' => $doc->purpose ?? 'N/A',
+                'date' => $doc->created_at->format('M j'),
+                'urgency' => $doc->urgency,
+                'status' => $doc->status,
+            ];
+        })->all();
 
-        return view('admin.documents', compact('documents'));
+        return view('admin.documents', compact('requests'));
+    }
+
+    public function updateDocument(Request $request, \App\Models\DocumentRequest $documentRequest): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'string'],
+        ]);
+
+        $documentRequest->update(['status' => $validated['status']]);
+
+        return back()->with('status', 'Document request status updated.');
     }
 
     public function forum(): View
@@ -330,7 +372,7 @@ class AdminController extends Controller
         $courseFilter = trim((string) $request->query('course', ''));
 
         $enrollments = StudentModuleRecord::query()
-            ->where('enrollment_status', $tab)
+            ->where('enrollment_status', $tab === 'pending' ? 'faculty_approved' : $tab)
             ->with(['user:id,name,email'])
             ->when($courseFilter !== '', function ($query) use ($courseFilter): void {
                 $query->where('module_code', $courseFilter);
@@ -340,7 +382,7 @@ class AdminController extends Controller
             ->withQueryString();
 
         $enrolledCount = StudentModuleRecord::where('enrollment_status', 'enrolled')->count();
-        $pendingCount = StudentModuleRecord::where('enrollment_status', 'pending')->count();
+        $pendingCount = StudentModuleRecord::where('enrollment_status', 'faculty_approved')->count();
         $droppedCount = StudentModuleRecord::where('enrollment_status', 'dropped')->count();
 
         $summary = [
@@ -369,7 +411,7 @@ class AdminController extends Controller
 
         return redirect()
             ->route('admin.enrollments', ['tab' => 'pending'])
-            ->with('status', 'Enrollment approved for '.$moduleRecord->user->name.' in '.$moduleRecord->module_name.'.');
+            ->with('status', 'Enrollment verified for '.$moduleRecord->user->name.' in '.$moduleRecord->module_name.'.');
     }
 
     public function assignSection(Request $request, StudentModuleRecord $moduleRecord): RedirectResponse

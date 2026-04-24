@@ -32,7 +32,7 @@
                     <h2 class="text-2xl font-semibold text-slate-900">Attendance Records</h2>
                     <p class="mt-2 text-sm text-slate-500">View recent student attendance updates.</p>
                 </div>
-                <form method="GET" action="{{ route('faculty.grades') }}" class="grid w-full gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_1fr_1fr_auto_auto_auto] xl:items-center">
+                <form method="GET" action="{{ route('faculty.grades') }}" class="flex flex-wrap items-center gap-3 w-full lg:w-auto lg:justify-end">
                     <input
                         type="text"
                         name="search"
@@ -57,15 +57,8 @@
 
                     <input
                         type="date"
-                        name="from_date"
-                        value="{{ $filters['from_date'] }}"
-                        class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none"
-                    />
-
-                    <input
-                        type="date"
-                        name="to_date"
-                        value="{{ $filters['to_date'] }}"
+                        name="date"
+                        value="{{ $filters['date'] }}"
                         class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none"
                     />
 

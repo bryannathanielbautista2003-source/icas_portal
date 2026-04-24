@@ -40,6 +40,35 @@ class AnnouncementController extends Controller
         return view('faculty.announcements.index', compact('announcements'));
     }
 
+    public function facultyStore(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'content' => ['required', 'string'],
+        ]);
+
+        try {
+            $announcement = Announcement::query()->create([
+                'title' => $validated['title'],
+                'content' => $validated['content'],
+                'audience' => 'faculty',
+            ]);
+
+            $announcement->created_at = now();
+            $announcement->save();
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()
+                ->withInput()
+                ->withErrors(['announcement' => 'Failed to create announcement. Please try again.']);
+        }
+
+        return redirect()
+            ->route('faculty.announcements.index')
+            ->with('status', 'Announcement created successfully.');
+    }
+
     public function studentIndex(): View
     {
         $announcements = Announcement::query()

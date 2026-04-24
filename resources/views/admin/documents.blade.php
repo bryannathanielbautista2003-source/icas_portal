@@ -46,18 +46,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                    @php
-                    $requests = [
-                        ['student'=>'Ana Reyes',    'doc'=>'Transcript of Records',      'purpose'=>'College Application',    'date'=>'Apr 15','urgency'=>'Standard','status'=>'Completed'],
-                        ['student'=>'Miguel Santos', 'doc'=>'Certificate of Enrollment',  'purpose'=>'Scholarship Application','date'=>'Apr 16','urgency'=>'Rush',    'status'=>'Completed'],
-                        ['student'=>'Sofia Cruz',    'doc'=>'Certificate of Good Standing','purpose'=>'Graduate School',       'date'=>'Apr 18','urgency'=>'Standard','status'=>'Processing'],
-                        ['student'=>'Ana Reyes',    'doc'=>'Certificate of Enrollment',  'purpose'=>'Scholarship Application','date'=>'Apr 18','urgency'=>'Rush',    'status'=>'Processing'],
-                        ['student'=>'Paulo Dela Cruz','doc'=>'Form 137',                 'purpose'=>'Transfer',               'date'=>'Apr 19','urgency'=>'Standard','status'=>'Pending'],
-                        ['student'=>'Maria Gomez',  'doc'=>'Diploma Copy',               'purpose'=>'Employment',             'date'=>'Apr 20','urgency'=>'Standard','status'=>'Pending'],
-                        ['student'=>'Jose Reyes',   'doc'=>'Transcript of Records',      'purpose'=>'Abroad Application',     'date'=>'Apr 21','urgency'=>'Rush',    'status'=>'Pending'],
-                    ];
-                    @endphp
-                    @foreach($requests as $r)
+                    @forelse($requests as $r)
                         @php
                             $badge = match($r['status']){'Completed'=>'bg-emerald-100 text-emerald-700','Processing'=>'bg-sky-100 text-sky-700','Pending'=>'bg-amber-100 text-amber-700',default=>'bg-rose-100 text-rose-700'};
                             $urgBadge = $r['urgency']==='Rush' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600';
@@ -75,15 +64,23 @@
                             <td class="px-5 py-3.5"><span class="inline-flex rounded-full {{ $urgBadge }} px-2.5 py-0.5 text-xs font-semibold">{{ $r['urgency'] }}</span></td>
                             <td class="px-5 py-3.5 text-center"><span class="inline-flex rounded-full {{ $badge }} px-3 py-1 text-xs font-bold">{{ $r['status'] }}</span></td>
                             <td class="px-5 py-3.5">
-                                <select class="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-400">
-                                    <option @selected($r['status']==='Pending')>Pending</option>
-                                    <option @selected($r['status']==='Processing')>Processing</option>
-                                    <option @selected($r['status']==='Completed')>Completed</option>
-                                    <option>Rejected</option>
-                                </select>
+                                <form action="{{ route('admin.documents.update', $r['id']) }}" method="POST" class="inline">
+                                    @csrf
+                                    @method('PATCH')
+                                    <select name="status" onchange="this.form.submit()" class="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-400">
+                                        <option value="Pending" @selected($r['status']==='Pending')>Pending</option>
+                                        <option value="Processing" @selected($r['status']==='Processing')>Processing</option>
+                                        <option value="Completed" @selected($r['status']==='Completed')>Completed</option>
+                                        <option value="Rejected" @selected($r['status']==='Rejected')>Rejected</option>
+                                    </select>
+                                </form>
                             </td>
                         </tr>
-                    @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-5 py-8 text-center text-slate-500">No document requests found.</td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>

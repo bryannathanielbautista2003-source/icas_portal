@@ -22,6 +22,7 @@ class StudentModuleRecord extends Model
         'section',
         'enrollment_status',
         'grade_percent',
+        'grade_verified',
         'documents_count',
         'upcoming_assessment_title',
         'upcoming_assessment_points',
@@ -36,6 +37,7 @@ class StudentModuleRecord extends Model
     {
         return [
             'grade_percent' => 'decimal:2',
+            'grade_verified' => 'boolean',
             'upcoming_assessment_due_date' => 'date',
             'enrollment_status' => 'string',
         ];
@@ -44,5 +46,14 @@ class StudentModuleRecord extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (StudentModuleRecord $record) {
+            if ($record->getOriginal('grade_verified') === true && $record->isDirty('grade_percent')) {
+                throw new \Exception("Cannot modify a verified grade.");
+            }
+        });
     }
 }

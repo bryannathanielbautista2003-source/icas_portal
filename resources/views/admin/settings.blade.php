@@ -2,7 +2,23 @@
 @section('title', 'System Settings')
 @section('pageDescription', 'Configure school information, academic term, and platform settings.')
 @section('content')
-<div class="space-y-6" x-data="{ tab: 'general' }">
+<div class="space-y-6" x-data="{ 
+    tab: 'general',
+    criteria: [
+        { name: 'Quizzes', weight: 40, term: 'Prelim' },
+        { name: 'Exams', weight: 40, term: 'Midterm' },
+        { name: 'Assignments', weight: 20, term: 'Final' }
+    ],
+    get totalWeight() {
+        return this.criteria.reduce((sum, item) => sum + Number(item.weight || 0), 0);
+    },
+    addCriterion() {
+        this.criteria.push({ name: '', weight: 0, term: 'Prelim' });
+    },
+    removeCriterion(index) {
+        this.criteria.splice(index, 1);
+    }
+}">
     <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-2 flex gap-2 flex-wrap">
         @foreach(['general'=>'General','academic'=>'Academic Term','grading'=>'Grading','appearance'=>'Appearance'] as $k=>$l)
             <button @click="tab='{{ $k }}'" :class="tab==='{{ $k }}'?'bg-green-600 text-white shadow-sm':'text-slate-600 hover:bg-slate-100'" class="rounded-2xl px-5 py-2.5 text-sm font-semibold transition">{{ $l }}</button>
@@ -104,7 +120,56 @@
                         </table>
                     </div>
                 </div>
-                <button class="rounded-2xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700 transition">Save Grading Settings</button>
+                
+                {{-- Grading Criteria Configuration --}}
+                <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="text-sm font-bold text-slate-700">Grading Criteria Configuration</p>
+                        <button type="button" @click="addCriterion" class="text-xs font-semibold bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl hover:bg-slate-100 transition shadow-sm">
+                            + Add Criterion
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <template x-for="(item, index) in criteria" :key="index">
+                            <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                <div class="flex-1 min-w-[150px]">
+                                    <input type="text" x-model="item.name" placeholder="Component Name (e.g. Quizzes)" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                                </div>
+                                <div class="w-full sm:w-28">
+                                    <div class="relative">
+                                        <input type="number" x-model.number="item.weight" min="0" max="100" placeholder="0" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 pr-8">
+                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 text-sm font-medium">%</div>
+                                    </div>
+                                </div>
+                                <div class="w-full sm:w-36">
+                                    <select x-model="item.term" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                                        <option>Prelim</option>
+                                        <option>Midterm</option>
+                                        <option>Final</option>
+                                    </select>
+                                </div>
+                                <button type="button" @click="removeCriterion(index)" class="text-rose-500 hover:bg-rose-50 p-2 rounded-xl transition" title="Remove">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-slate-200 flex items-center justify-between">
+                        <p class="text-sm font-semibold text-slate-700">Total Percentage:</p>
+                        <div class="text-right">
+                            <p class="text-lg font-black transition-colors duration-300" :class="totalWeight === 100 ? 'text-green-600' : 'text-rose-600'">
+                                <span x-text="totalWeight"></span>%
+                            </p>
+                        </div>
+                    </div>
+                    <p x-show="totalWeight !== 100" x-cloak class="text-xs text-rose-500 mt-1 text-right font-medium">
+                        Total weight must equal exactly 100% to save.
+                    </p>
+                </div>
+
+                <button :disabled="totalWeight !== 100" :class="totalWeight === 100 ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-slate-300 text-slate-500 cursor-not-allowed'" class="rounded-2xl px-6 py-3 text-sm font-semibold transition">Save Grading Settings</button>
             </form>
         </section>
     </div>
