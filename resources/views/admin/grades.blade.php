@@ -11,10 +11,22 @@
                 <h2 class="mt-1 text-2xl font-bold text-slate-900">Grade Distribution</h2>
                 <p class="mt-1 text-sm text-slate-500">Academic performance overview across all enrolled courses.</p>
             </div>
-            <a href="{{ route('admin.grades.export') }}" class="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                Export CSV
-            </a>
+            <div class="flex items-center gap-3">
+                <form action="{{ route('admin.grades') }}" method="GET" class="flex items-center gap-2">
+                    <select name="subject" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white" onchange="this.form.submit()">
+                        <option value="">All Subjects</option>
+                        @foreach($subjectOptions as $option)
+                            <option value="{{ $option['code'] }}" @selected($subjectFilter === $option['code'])>
+                                {{ $option['name'] }} ({{ $option['code'] }})
+                            </option>
+                        @endforeach
+                    </select>
+                </form>
+                <a href="{{ route('admin.grades.export', ['subject' => $subjectFilter]) }}" class="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Export CSV
+                </a>
+            </div>
         </div>
     </section>
 
@@ -135,10 +147,8 @@
 </div>
 
 <script>
-    function exportSubjectCSV(subjectId) {
-        // Logic to export subject CSV
-        console.log('Exporting CSV for subject ID: ' + subjectId);
-        alert('Exporting CSV for subject: ' + subjectId);
+    function exportSubjectCSV(subjectCode) {
+        window.location.href = "{{ route('admin.grades.export') }}?subject=" + encodeURIComponent(subjectCode);
     }
 </script>
 @endsection

@@ -424,6 +424,35 @@
                     </div>
                 @endif
 
+                @if(session('show_verification'))
+                <form method="POST" action="{{ route('verify.upload') }}" class="mt-5" id="verifyForm" enctype="multipart/form-data">
+                    @csrf
+                    <div class="alert alert-warning bg-amber-100 text-amber-800 p-4 rounded-xl mb-4 text-sm font-semibold border border-amber-200">
+                        Verification Required. Please upload the necessary documents to activate your account.
+                    </div>
+                    
+                    <div class="mt-4 space-y-4">
+                        <div class="field-wrap">
+                            <label class="block text-xs font-bold uppercase tracking-[0.1em] text-white/90 mb-2">Section 1: Receipt Proof (Payment Verification)</label>
+                            <input type="file" name="receipt_proof" class="auth-input h-12 w-full rounded-2xl py-3 px-4 text-sm text-white outline-none transition" required accept=".jpg,.jpeg,.png,.pdf">
+                        </div>
+
+                        <div class="field-wrap">
+                            <label class="block text-xs font-bold uppercase tracking-[0.1em] text-white/90 mb-2">Section 2: Student ID (Identity Verification)</label>
+                            <input type="file" name="student_id_proof" class="auth-input h-12 w-full rounded-2xl py-3 px-4 text-sm text-white outline-none transition" required accept=".jpg,.jpeg,.png,.pdf">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="primary-action mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] active:scale-[0.99]">
+                        Submit Verification
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    </button>
+                    
+                    <p class="mt-4 text-center text-sm text-white/90">
+                        <a href="{{ route('login') }}" class="font-semibold hover:text-white">Back to Login</a>
+                    </p>
+                </form>
+                @else
                 <form method="POST" action="{{ route('login') }}" class="mt-5" id="loginForm">
                     @csrf
                     <input type="hidden" name="role" id="selected-role" value="{{ old('role', 'student') }}">
@@ -468,6 +497,7 @@
                         <a href="{{ route('password.request') }}" class="font-semibold hover:text-white">Forgot your password?</a>
                     </p>
                 </form>
+                @endif
 
                 <p class="mt-6 text-center text-sm text-white/90">
                     New to ICAS?

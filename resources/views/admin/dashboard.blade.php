@@ -11,6 +11,18 @@
             <p class="text-green-50">Here's a summary of your school's performance and system status.</p>
         </div>
 
+        @if($pendingUsersCount > 0)
+        <div class="alert alert-warning bg-amber-100 text-amber-800 p-4 rounded-xl border border-amber-200 shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <div class="font-semibold text-sm">
+                    New Student Account for Verification ({{ $pendingUsersCount }} pending)
+                </div>
+            </div>
+            <a href="{{ route('admin.users', ['status' => 'pending']) }}" class="text-sm font-bold bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition">View Users</a>
+        </div>
+        @endif
+
         <!-- Stats Grid -->
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             @foreach($summary as $item)

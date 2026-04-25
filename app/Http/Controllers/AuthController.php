@@ -143,6 +143,19 @@ class AuthController extends Controller
                 ])->withInput();
             }
 
+            if ($user->role === 'student' && $user->status === 'pending') {
+                Auth::logout();
+                
+                if ($user->receipt_proof && $user->student_id_proof) {
+                    return back()->withErrors([
+                        'email' => 'Your account is under review by an administrator. Please wait for activation.',
+                    ])->withInput();
+                }
+
+                $request->session()->put('pending_user_id', $user->id);
+                return back()->with('show_verification', true)->withInput();
+            }
+
             $request->session()->regenerate();
 
             // Role-based redirect after login
@@ -164,5 +177,36 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/login');
+    }
+
+    public function verifyUpload(Request $request): RedirectResponse
+    {
+        $userId = $request->session()->get('pending_user_id');
+        if (!$userId) {
+            return redirect()->route('login')->withErrors(['email' => 'Session expired. Please try again.']);
+        }
+
+        $user = User::find($userId);
+        if (!$user || $user->status !== 'pending') {
+            return redirect()->route('login')->withErrors(['email' => 'Invalid account state.']);
+        }
+
+        $request->validate([
+            'receipt_proof' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:2048'],
+            'student_id_proof' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:2048'],
+        ]);
+
+        if ($request->hasFile('receipt_proof')) {
+            $user->receipt_proof = $request->file('receipt_proof')->store('verifications', 'public');
+        }
+
+        if ($request->hasFile('student_id_proof')) {
+            $user->student_id_proof = $request->file('student_id_proof')->store('verifications', 'public');
+        }
+
+        $user->save();
+        $request->session()->forget('pending_user_id');
+
+        return redirect()->route('login')->with('status', 'Verification documents submitted successfully! Your account is now under review.');
     }
 }

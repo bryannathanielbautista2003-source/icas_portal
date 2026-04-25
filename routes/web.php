@@ -27,6 +27,7 @@ Route::get('/login', function () {
     return view('login');
 })->name('login');
 Route::post('/login', [AuthController::class, 'authenticate']);
+Route::post('/verify-upload', [AuthController::class, 'verifyUpload'])->name('verify.upload');
 Route::get('/register', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');
@@ -121,6 +122,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/audit-trail', [AdminController::class, 'auditTrail'])->name('audit-trail');
         Route::get('/system-monitoring', [AdminController::class, 'systemMonitoring'])->name('system-monitoring');
         Route::get('/users', [AdminController::class, 'users'])->name('users');
+        Route::patch('/users/{user}/activate', [AdminController::class, 'activateUser'])->name('users.activate');
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
     });
 });

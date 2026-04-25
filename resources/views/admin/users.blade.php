@@ -74,9 +74,19 @@
                                     <button class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition">View</button>
                                     <button class="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-200 transition">Edit</button>
                                     @if($user['status']==='active')
-                                        <button class="rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-200 transition">Deactivate</button>
+                                        <form method="POST" action="{{ route('admin.users.activate', $user['id']) }}" class="inline">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="status" value="inactive">
+                                            <button type="submit" class="rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-200 transition">Deactivate</button>
+                                        </form>
                                     @else
-                                        <button class="rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-200 transition">Activate</button>
+                                        <form method="POST" action="{{ route('admin.users.activate', $user['id']) }}" class="inline">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="status" value="active">
+                                            <button type="submit" class="rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-200 transition">Activate</button>
+                                        </form>
                                     @endif
                                 </div>
                             </td>

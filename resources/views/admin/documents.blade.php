@@ -20,16 +20,24 @@
                 <h2 class="text-xl font-bold text-slate-900">All Document Requests</h2>
                 <p class="text-sm text-slate-500 mt-1">Review requests and update their status. Students will be notified.</p>
             </div>
-            <div class="flex flex-wrap gap-3">
-                <input type="text" placeholder="Search student…" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-green-400">
-                <select class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+            <form action="{{ route('admin.documents') }}" method="GET" class="flex flex-wrap gap-3">
+                <input type="text" name="search" value="{{ $search }}" placeholder="Search student…" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-green-400" onkeydown="if(event.key === 'Enter') this.form.submit()">
+                <select name="type" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" onchange="this.form.submit()">
                     <option value="">All Types</option>
-                    <option>Transcript of Records</option><option>Certificate of Enrollment</option><option>Certificate of Good Standing</option><option>Diploma Copy</option><option>Form 137</option>
+                    <option @selected($type === 'Transcript of Records')>Transcript of Records</option>
+                    <option @selected($type === 'Certificate of Enrollment')>Certificate of Enrollment</option>
+                    <option @selected($type === 'Certificate of Good Standing')>Certificate of Good Standing</option>
+                    <option @selected($type === 'Diploma Copy')>Diploma Copy</option>
+                    <option @selected($type === 'Form 137')>Form 137</option>
                 </select>
-                <select class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
-                    <option value="">All Statuses</option><option>Pending</option><option>Processing</option><option>Completed</option><option>Rejected</option>
+                <select name="status" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" onchange="this.form.submit()">
+                    <option value="">All Statuses</option>
+                    <option @selected($status === 'Pending')>Pending</option>
+                    <option @selected($status === 'Processing')>Processing</option>
+                    <option @selected($status === 'Completed')>Completed</option>
+                    <option @selected($status === 'Rejected')>Rejected</option>
                 </select>
-            </div>
+            </form>
         </div>
 
         <div class="overflow-x-auto rounded-2xl border border-slate-200">

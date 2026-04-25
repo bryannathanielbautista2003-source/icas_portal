@@ -51,13 +51,16 @@ class AdminController extends Controller
         $enrollmentEnrolled = StudentModuleRecord::where('enrollment_status', 'enrolled')->count();
         $enrollmentDropped = StudentModuleRecord::where('enrollment_status', 'dropped')->count();
 
+        $pendingUsersCount = User::where('status', 'pending')->count();
+
         return view('admin.dashboard', compact(
             'summary',
             'overview',
             'recentActions',
             'enrollmentPending',
             'enrollmentEnrolled',
-            'enrollmentDropped'
+            'enrollmentDropped',
+            'pendingUsersCount'
         ));
     }
 
@@ -93,6 +96,13 @@ class AdminController extends Controller
             'pending'  => User::where('status', 'pending')->count(),
         ];
         return view('admin.users', compact('filtered', 'stats', 'roleFilter', 'statusFilter', 'search'));
+    }
+
+    public function activateUser(Request $request, User $user): RedirectResponse
+    {
+        $status = $request->input('status', 'active');
+        $user->update(['status' => $status]);
+        return back()->with('status', "User {$user->name} has been updated to {$status}.");
     }
 
     public function settings(): View
@@ -174,10 +184,15 @@ class AdminController extends Controller
         return view('admin.attendance', compact('summary', 'records', 'filters', 'activeFilters', 'classOptions', 'facultyOptions'));
     }
 
-    public function grades(): View
+    public function grades(Request $request): View
     {
+        $subjectFilter = $request->query('subject', '');
+        
         $coursesData = StudentModuleRecord::query()
             ->whereNotNull('grade_percent')
+            ->when($subjectFilter !== '', function ($query) use ($subjectFilter) {
+                return $query->where('module_code', $subjectFilter);
+            })
             ->get()
             ->groupBy('module_code');
 
@@ -213,7 +228,15 @@ class AdminController extends Controller
             ->where('grade_verified', false)
             ->get();
 
-        return view('admin.grades', compact('courses', 'unverifiedGrades'));
+        $subjectOptions = StudentModuleRecord::query()
+            ->select('module_code', 'module_name')
+            ->distinct()
+            ->orderBy('module_name')
+            ->get()
+            ->map(fn ($r) => ['code' => $r->module_code, 'name' => $r->module_name])
+            ->all();
+
+        return view('admin.grades', compact('courses', 'unverifiedGrades', 'subjectFilter', 'subjectOptions'));
     }
 
     public function verifyGrade(StudentModuleRecord $moduleRecord): RedirectResponse
@@ -222,10 +245,14 @@ class AdminController extends Controller
         return back()->with('status', 'Grade verified for ' . ($moduleRecord->user->name ?? 'Student'));
     }
 
-    public function exportGrades(): StreamedResponse
+    public function exportGrades(Request $request): StreamedResponse
     {
+        $subjectFilter = $request->query('subject');
         $records = StudentModuleRecord::query()
             ->with(['user:id,name,email'])
+            ->when($subjectFilter, function ($query, $subjectFilter) {
+                return $query->where('module_code', $subjectFilter);
+            })
             ->orderBy('module_name')
             ->orderBy('module_code')
             ->get();
@@ -259,9 +286,27 @@ class AdminController extends Controller
     }
 
 
-    public function documents(): View
+    public function documents(Request $request): View
     {
-        $requests = \App\Models\DocumentRequest::with('user:id,name')->latest()->get()->map(function($doc) {
+        $search = $request->query('search');
+        $type = $request->query('type');
+        $status = $request->query('status');
+
+        $requestsQuery = \App\Models\DocumentRequest::with('user:id,name')
+            ->when($search, function ($q) use ($search) {
+                $q->whereHas('user', function ($q2) use ($search) {
+                    $q2->where('name', 'like', "%{$search}%");
+                });
+            })
+            ->when($type, function ($q) use ($type) {
+                $q->where('document_type', $type);
+            })
+            ->when($status, function ($q) use ($status) {
+                $q->where('status', $status);
+            })
+            ->latest();
+
+        $requests = $requestsQuery->get()->map(function($doc) {
             return [
                 'id' => $doc->id,
                 'student' => $doc->user->name ?? 'Unknown',
@@ -273,7 +318,7 @@ class AdminController extends Controller
             ];
         })->all();
 
-        return view('admin.documents', compact('requests'));
+        return view('admin.documents', compact('requests', 'search', 'type', 'status'));
     }
 
     public function updateDocument(Request $request, \App\Models\DocumentRequest $documentRequest): RedirectResponse
