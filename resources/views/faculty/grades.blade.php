@@ -185,7 +185,7 @@
                     </form>
                 </div>
 
-                <form method="POST" action="{{ route('grades.save') }}">
+                <form method="POST" action="{{ route('faculty.grades.save') }}">
                     @csrf
                     <div class="mt-6 flex justify-end gap-2">
                         <button type="submit" class="rounded-3xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition">Save Grades</button>
