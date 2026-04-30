@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
         // This is the trigger that runs your UserSeeder code
         $this->call([
             UserSeeder::class,
+            AdminDemoSeeder::class,
         ]);
     }
 }
