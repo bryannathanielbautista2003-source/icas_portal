@@ -43,7 +43,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/forgot-password/sent', [AuthController::class, 'showForgotPasswordSent'])->name('password.sent');
     Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
     Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
-    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.reset.update');
 });
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
