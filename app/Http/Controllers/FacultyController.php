@@ -490,6 +490,41 @@ class FacultyController extends Controller
     }
 
     /**
+     * Load existing attendance records for a specific date and class (for pre-fill logic)
+     */
+    public function loadTodayAttendance(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'student_class' => 'required|string',
+            'attendance_date' => 'required|date',
+        ]);
+
+        $records = FacultyAttendanceRecord::query()
+            ->where('faculty_user_id', Auth::id())
+            ->where('student_class', $request->input('student_class'))
+            ->whereDate('attendance_date', $request->input('attendance_date'))
+            ->get(['id', 'student_name', 'status', 'attendance_date'])
+            ->map(function (FacultyAttendanceRecord $record) {
+                return [
+                    'id' => $record->id,
+                    'student_name' => $record->student_name,
+                    'status' => $record->status,
+                    'date' => $record->attendance_date->format('Y-m-d'),
+                ];
+            })
+            ->all();
+
+        return response()->json([
+            'exists' => ! empty($records),
+            'count' => count($records),
+            'records' => $records,
+            'message' => empty($records)
+                ? 'No attendance records for this class today.'
+                : count($records).' record(s) already submitted for today.',
+        ]);
+    }
+
+    /**
      * @return array{search: string, status: string, student_class: string, date: string}
      */
     private function resolveGradesFilters(Request $request): array

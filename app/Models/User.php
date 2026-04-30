@@ -36,7 +36,14 @@ class User extends Authenticatable
         'receipt_proof',
         'student_id_proof',
         'academic_level',
-        'course'
+        'course',
+        'title',
+        'designation',
+        'department',
+        'office_hours',
+        'gender',
+        'address',
+        'profile_photo',
     ];
 
     /**
@@ -89,5 +96,10 @@ class User extends Authenticatable
     public function auditTrails(): HasMany
     {
         return $this->hasMany(AuditTrail::class);
+    }
+
+    public function announcements(): HasMany
+    {
+        return $this->hasMany(Announcement::class, 'created_by');
     }
 }

@@ -79,6 +79,17 @@
 
                 <form method="POST" action="{{ route('faculty.grades.records.store') }}" class="mt-6 grid gap-3 md:grid-cols-[1.5fr_1fr_1fr_1fr_auto]">
                     @csrf
+
+                    <!-- Alert for existing attendance -->
+                    <div id="attendance-alert" class="hidden col-span-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 flex items-start gap-3">
+                        <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                        <div>
+                            <strong>Attendance exists for this date:</strong> 
+                            <span id="attendance-count">Loading...</span> record(s) found.
+                            <div id="existing-records-summary" class="mt-2 text-xs"></div>
+                        </div>
+                    </div>
+
                     <input
                         type="text"
                         name="student_name"
@@ -90,6 +101,7 @@
                     <input
                         type="text"
                         name="student_class"
+                        id="student-class-input"
                         value="{{ old('student_class') }}"
                         placeholder="Class (e.g. 10th A)"
                         class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none"
@@ -97,6 +109,7 @@
                     />
                     <input
                         type="date"
+                        id="attendance-date-input"
                         name="attendance_date"
                         value="{{ old('attendance_date', now()->toDateString()) }}"
                         class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none"
@@ -116,10 +129,67 @@
                         <span class="text-sm text-slate-700">Update existing if found</span>
                     </label>
 
+                    <button type="button" id="load-attendance-btn" class="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition">
+                        Load Today
+                    </button>
+
                     <button type="submit" class="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition">
                         Register Record
                     </button>
                 </form>
+
+                <script>
+                    document.getElementById('load-attendance-btn').addEventListener('click', async function() {
+                        const studentClass = document.getElementById('student-class-input').value;
+                        const attendanceDate = document.getElementById('attendance-date-input').value;
+
+                        if (!studentClass || !attendanceDate) {
+                            alert('Please enter Class and Date first.');
+                            return;
+                        }
+
+                        try {
+                            const response = await fetch("{{ route('faculty.grades.load-today-attendance') }}", {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                body: JSON.stringify({
+                                    student_class: studentClass,
+                                    attendance_date: attendanceDate,
+                                }),
+                            });
+
+                            // Actually, GET with body is not standard. Use query params instead
+                            const url = new URL("{{ route('faculty.grades.load-today-attendance') }}", window.location.origin);
+                            url.searchParams.append('student_class', studentClass);
+                            url.searchParams.append('attendance_date', attendanceDate);
+
+                            const result = await fetch(url.toString(), {
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                            }).then(r => r.json());
+
+                            const alert = document.getElementById('attendance-alert');
+                            const summary = document.getElementById('existing-records-summary');
+
+                            if (result.exists) {
+                                alert.classList.remove('hidden');
+                                document.getElementById('attendance-count').textContent = result.count;
+                                summary.innerHTML = result.records.map(r => 
+                                    `<div class="mt-1">• ${r.student_name}: ${r.status}</div>`
+                                ).join('');
+                            } else {
+                                alert.classList.add('hidden');
+                            }
+                        } catch (error) {
+                            console.error('Error loading attendance:', error);
+                            alert('Error loading attendance records.');
+                        }
+                    });
+                </script>
 
                 <div class="mt-6 overflow-x-auto">
                     <table class="min-w-full text-left text-sm text-slate-700">

@@ -52,6 +52,7 @@ class AnnouncementController extends Controller
                 'title' => $validated['title'],
                 'content' => $validated['content'],
                 'audience' => 'faculty',
+                'created_by' => auth()->id(),
             ]);
 
             $announcement->created_at = now();
@@ -110,6 +111,7 @@ class AnnouncementController extends Controller
                 'content' => $validated['content'],
                 'audience' => $validated['audience'],
                 'attachment_path' => $attachmentPath,
+                'created_by' => auth()->id(),
             ]);
 
             $announcement->created_at = Carbon::parse((string) $validated['announcement_date'])

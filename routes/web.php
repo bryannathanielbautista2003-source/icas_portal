@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassroomController;
 use App\Http\Controllers\FacultyController;
 use App\Http\Controllers\GradeController;
+use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -47,12 +48,18 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Dashboard Routes
-Route::middleware('auth')->group(function () {
+Route::middleware('auth', 'force.password.change')->group(function () {
     Route::get('/dashboard', function () {
         return redirect()->route(Auth::user()->role.'.dashboard');
     })->name('dashboard');
 
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+
+    // Force password change routes (accessible even with force_password_change flag)
+    Route::get('/password/change', function () {
+        return view('auth.change-password');
+    })->name('password.change');
+    Route::post('/password/update', [\App\Http\Controllers\AuthController::class, 'updatePassword'])->name('password.update');
 
     Route::middleware('role:admin')->group(function () {
         Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
@@ -91,6 +98,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/grades/export-grades', [GradeController::class, 'export'])->name('grades.export.csv');
         Route::post('/grades/store', [GradeController::class, 'store'])->name('grades.save');
         Route::get('/grades/export', [FacultyController::class, 'exportAttendanceRecords'])->name('grades.export');
+        Route::get('/grades/load-today-attendance', [FacultyController::class, 'loadTodayAttendance'])->name('grades.load-today-attendance');
         Route::post('/grades/records', [FacultyController::class, 'storeAttendanceRecord'])->middleware('classroom.active')->name('grades.records.store');
         Route::patch('/grades/records/{attendanceRecord}', [FacultyController::class, 'updateAttendanceRecord'])->name('grades.records.update');
         Route::get('/enrollments', [FacultyController::class, 'enrollments'])->name('enrollments');
@@ -136,7 +144,28 @@ Route::middleware('auth')->group(function () {
         Route::get('/audit-trail', [AdminController::class, 'auditTrail'])->name('audit-trail');
         Route::get('/system-monitoring', [AdminController::class, 'systemMonitoring'])->name('system-monitoring');
         Route::get('/users', [AdminController::class, 'users'])->name('users');
+        Route::get('/faculty', [AdminController::class, 'facultyDirectory'])->name('faculty');
+        Route::get('/faculty/{user}/show', [AdminController::class, 'facultyShow'])->name('faculty.show');
+        Route::patch('/faculty/{user}/toggle-status', [AdminController::class, 'toggleFacultyStatus'])->name('faculty.toggle-status');
         Route::patch('/users/{user}/activate', [AdminController::class, 'activateUser'])->name('users.activate');
+        // Bulk import routes
+        Route::get('/users/template/download', [AdminController::class, 'downloadStudentTemplate'])->name('users.template.download');
+        Route::post('/users/import', [AdminController::class, 'importStudents'])->name('users.import');
+        Route::get('/users/{user}/show', [AdminController::class, 'showStudent'])->name('users.show');
+        Route::get('/users/{user}/edit', [AdminController::class, 'editStudent'])->name('users.edit');
+        Route::post('/users/{user}/edit', [AdminController::class, 'editStudent']);
+        Route::patch('/users/{user}/toggle-status', [AdminController::class, 'toggleStudentStatus'])->name('users.toggle-status');
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
+        Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
+        Route::get('/profile', [AdminController::class, 'profile'])->name('profile');
+        Route::post('/profile', [AdminController::class, 'updateProfile'])->name('profile.update');
+        // Maintenance & Backup
+        Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance');
+        Route::post('/maintenance/backup', [MaintenanceController::class, 'backup'])->name('maintenance.backup');
+        Route::get('/maintenance/backup/{filename}/download', [MaintenanceController::class, 'download'])->name('maintenance.backup.download');
+        Route::delete('/maintenance/backup', [MaintenanceController::class, 'deleteBackup'])->name('maintenance.backup.delete');
+        Route::post('/maintenance/restore', [MaintenanceController::class, 'restore'])->name('maintenance.restore');
+        Route::post('/maintenance/toggle', [MaintenanceController::class, 'toggleMaintenance'])->name('maintenance.toggle');
+        Route::post('/maintenance/schedule', [MaintenanceController::class, 'updateSchedule'])->name('maintenance.schedule');
     });
 });

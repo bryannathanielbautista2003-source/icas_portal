@@ -210,7 +210,13 @@ class StudentController extends Controller
                 ->first()
             : null;
 
-        $averageGrade = $allRecords->avg('grade_percent');
+        $grading = new \App\Services\GradingService();
+        $gpas = $allRecords->map(function ($r) use ($grading) {
+            $g = $grading->toGpa((float) $r->grade_percent);
+            return is_string($g) && $g !== 'Dropped' ? (float) $g : null;
+        })->filter()->all();
+
+        $averageGrade = count($gpas) ? number_format(array_sum($gpas) / count($gpas), 2) : null;
 
         $upcomingAssessments = $records
             ->filter(function (StudentModuleRecord $record): bool {

@@ -149,6 +149,13 @@ class AuthController extends Controller
                 ])->withInput();
             }
 
+            if ($user->status === 'inactive') {
+                Auth::logout();
+                return back()->withErrors([
+                    'email' => 'Your account has been deactivated. Please contact the administrator.',
+                ])->withInput();
+            }
+
             if ($user->role === 'student' && $user->status === 'pending') {
                 Auth::logout();
                 $hasRequiredProof = false;
@@ -191,6 +198,31 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/login');
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'password.required' => 'Password is required.',
+            'password.min' => 'Password must be at least 8 characters.',
+            'password.confirmed' => 'Passwords do not match.',
+        ]);
+
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $user->update([
+            'password' => Hash::make($request->input('password')),
+            'force_password_change' => false,
+        ]);
+
+        return redirect()
+            ->route(Auth::user()->role.'.dashboard')
+            ->with('status', 'Password updated successfully. You can now access the full system.');
     }
 
     public function verifyUpload(Request $request): RedirectResponse

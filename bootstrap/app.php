@@ -12,8 +12,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
    ->withMiddleware(function (Middleware $middleware) {
     $middleware->alias([
-        'role' => \App\Http\Middleware\RoleMiddleware::class,
-        'classroom.active' => \App\Http\Middleware\EnsureClassroomActive::class,
+        'role'               => \App\Http\Middleware\RoleMiddleware::class,
+        'classroom.active'   => \App\Http\Middleware\EnsureClassroomActive::class,
+        'force.password.change' => \App\Http\Middleware\CheckForcePasswordChange::class,
+        'maintenance'        => \App\Http\Middleware\CheckMaintenanceMode::class,
+    ]);
+    // Apply maintenance check to every web request
+    $middleware->web(append: [
+        \App\Http\Middleware\CheckMaintenanceMode::class,
     ]);
 })
     ->withExceptions(function (Exceptions $exceptions): void {

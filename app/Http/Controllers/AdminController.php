@@ -6,6 +6,7 @@ use App\Models\Announcement;
 use App\Models\FacultyAttendanceRecord;
 use App\Models\StudentModuleRecord;
 use App\Models\User;
+use App\Http\Requests\ImportStudentCsvRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -115,20 +116,150 @@ class AdminController extends Controller
         return back()->with('status', "User {$user->name} has been updated to {$status}.");
     }
 
+    public function downloadStudentTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $filename = 'student-import-template-'.now()->format('Ymd').'.csv';
+
+        return response()->streamDownload(function (): void {
+            $output = fopen('php://output', 'w');
+            if ($output === false) {
+                return;
+            }
+
+            $headers = ['Student Number', 'Full Name', 'Email', 'Academic Level'];
+            fputcsv($output, $headers);
+
+            // Example rows
+            $examples = [
+                ['STU-001', 'Juan Dela Cruz', 'juan.delacruz@school.edu', '1st Year College'],
+                ['STU-002', 'Maria Santos', 'maria.santos@school.edu', '2nd Year College'],
+                ['STU-003', 'Carlos Reyes', 'carlos.reyes@school.edu', 'Senior High School'],
+            ];
+            foreach ($examples as $row) {
+                fputcsv($output, $row);
+            }
+
+            fclose($output);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function importStudents(ImportStudentCsvRequest $request): RedirectResponse
+    {
+        $service = new \App\Services\StudentBulkImportService();
+        $result = $service->import($request->file('csv_file'));
+
+        $message = "Import complete: {$result['success']} created, {$result['failed']} failed, {$result['duplicates']} duplicates.";
+
+        if (!empty($result['errors'])) {
+            $errorSummary = implode("\n", array_slice($result['errors'], 0, 10));
+            if (count($result['errors']) > 10) {
+                $errorSummary .= "\n... and " . (count($result['errors']) - 10) . " more errors.";
+            }
+
+            return back()
+                ->with('status', $message)
+                ->withErrors(['csv_errors' => $errorSummary]);
+        }
+
+        return back()->with('status', $message);
+    }
+
+    public function showStudent(User $user): \Illuminate\View\View
+    {
+        abort_if($user->role !== 'student', 403);
+
+        return view('admin.users.show', compact('user'));
+    }
+
+    public function editStudent(Request $request, User $user): \Illuminate\View\View | RedirectResponse
+    {
+        abort_if($user->role !== 'student', 403);
+
+        if ($request->method() === 'GET') {
+            return view('admin.users.edit', compact('user'));
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'academic_level' => 'required|in:Senior High School,1st Year College,2nd Year College,3rd Year College',
+            'course' => 'nullable|string|max:255',
+        ]);
+
+        $user->update($validated);
+
+        return redirect()->route('admin.users')->with('status', "Student {$user->name} updated successfully.");
+    }
+
+    public function toggleStudentStatus(Request $request, User $user): RedirectResponse
+    {
+        abort_if($user->role !== 'student', 403);
+
+        $newStatus = $request->input('status') === 'active' ? 'inactive' : 'active';
+        $user->update(['status' => $newStatus]);
+
+        return back()->with('status', "Student {$user->name} has been {$newStatus}.");
+    }
+
     public function settings(): View
     {
+        $settings = new \App\Services\SystemSettingsService();
+
         $schoolSettings = [
-            'school_name'   => 'ICAS Learning Management System',
-            'school_code'   => 'ICAS-2024',
-            'academic_year' => '2024–2025',
-            'semester'      => 'Second Semester',
-            'enrollment_start' => 'January 6, 2025',
-            'enrollment_end'   => 'January 31, 2025',
-            'exam_start'       => 'March 17, 2025',
-            'timezone'         => 'Asia/Manila (UTC+8)',
-            'default_passing_grade' => '75%',
+            'school_name'   => $settings->get('school_name', 'ICAS Learning Management System'),
+            'school_code'   => $settings->get('school_code', 'ICAS-2024'),
+            'academic_year' => $settings->get('academic_year', '2024–2025'),
+            'semester'      => $settings->get('current_semester', 'Second Semester'),
+            'enrollment_start' => $settings->get('enrollment_start', '2025-01-06'),
+            'enrollment_end'   => $settings->get('enrollment_end', '2025-01-31'),
+            'exam_start'       => $settings->get('final_exam_start', '2025-03-17'),
+            'timezone'         => $settings->get('timezone', 'Asia/Manila (UTC+8)'),
+            'default_passing_grade' => (int) $settings->get('passing_grade', 75),
+            'grading_scale'    => $settings->get('grading_scale', 'gpa'),
+            'grade_equivalency' => $settings->get('grade_equivalency', [
+                ['range' => '99-100', 'gpa' => '1.00'],
+                ['range' => '96-98', 'gpa' => '1.25'],
+                ['range' => '93-95', 'gpa' => '1.50'],
+                ['range' => '90-92', 'gpa' => '1.75'],
+                ['range' => '87-89', 'gpa' => '2.00'],
+                ['range' => '84-86', 'gpa' => '2.25'],
+                ['range' => '81-83', 'gpa' => '2.50'],
+                ['range' => '78-80', 'gpa' => '2.75'],
+                ['range' => '75-77', 'gpa' => '3.00'],
+                ['range' => '0-50', 'gpa' => 'Dropped'],
+            ]),
+            'theme_admin_color' => $settings->get('theme_admin_color', '#16a34a'),
+            'theme_faculty_color' => $settings->get('theme_faculty_color', '#f59e0b'),
+            'theme_student_color' => $settings->get('theme_student_color', '#7c3aed'),
         ];
+
         return view('admin.settings', compact('schoolSettings'));
+    }
+
+    public function updateSettings(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'school_name' => 'nullable|string|max:255',
+            'school_code' => 'nullable|string|max:50',
+            'academic_year' => 'nullable|string|max:50',
+            'current_semester' => 'nullable|string|max:50',
+            'enrollment_start' => 'nullable|date',
+            'enrollment_end' => 'nullable|date',
+            'final_exam_start' => 'nullable|date',
+            'passing_grade' => 'nullable|integer|min:0|max:100',
+            'theme_admin_color' => 'nullable|string|max:30',
+            'theme_faculty_color' => 'nullable|string|max:30',
+            'theme_student_color' => 'nullable|string|max:30',
+        ]);
+
+        $settings = new \App\Services\SystemSettingsService();
+        foreach ($data as $k => $v) {
+            if ($v === null) { continue; }
+            // Save mapping differences
+            $key = $k === 'current_semester' ? 'current_semester' : $k;
+            $settings->set($key, $v);
+        }
+
+        return back()->with('status', 'Settings updated. Global term and appearance updated.');
     }
 
     public function attendance(Request $request): View
@@ -758,6 +889,124 @@ class AdminController extends Controller
         ];
 
         return view('admin.system-monitoring', compact('serverStats', 'platformStats', 'registrationTrend', 'healthChecks'));
+    }
+
+    /**
+     * Admin Profile page – shows editable profile fields and the admin's
+     * own announcements (filtered by created_by).
+     */
+    public function profile(): View
+    {
+        $admin = auth()->user();
+
+        // Announcements created by this admin only
+        $myAnnouncements = Announcement::where('created_by', $admin->id)
+            ->latest()
+            ->get();
+
+        return view('admin.profile', compact('admin', 'myAnnouncements'));
+    }
+
+    /**
+     * Update individual or multiple admin profile fields.
+     */
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        $admin = auth()->user();
+
+        $validated = $request->validate([
+            'title'        => 'nullable|string|in:Dr.,Mr.,Ms.,Mrs.,Prof.,Engr.',
+            'designation'  => 'nullable|string|max:100',
+            'department'   => 'nullable|string|max:100',
+            'office_hours' => 'nullable|string|max:100',
+            'gender'       => 'nullable|string|in:Male,Female,Other,Prefer not to say',
+            'address'      => 'nullable|string|max:500',
+            'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        // Handle photo upload
+        if ($request->hasFile('profile_photo')) {
+            // Delete old photo if exists
+            if ($admin->profile_photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($admin->profile_photo)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($admin->profile_photo);
+            }
+            $validated['profile_photo'] = $request->file('profile_photo')->store('admin-photos', 'public');
+        } else {
+            unset($validated['profile_photo']);
+        }
+
+        $admin->update($validated);
+
+        return back()->with('status', 'Profile updated successfully.');
+    }
+
+    public function facultyDirectory(Request $request): View
+    {
+        $search = $request->query('search', '');
+        $departmentFilter = $request->query('department', '');
+        $statusFilter = $request->query('status', '');
+
+        $query = User::where('role', 'faculty')
+            ->when($search, function($q) use ($search) {
+                $q->where(function($q2) use ($search) {
+                    $q2->where('name', 'like', "%{$search}%")
+                       ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->when($departmentFilter, function($q) use ($departmentFilter) {
+                $q->where('department', $departmentFilter);
+            })
+            ->when($statusFilter, function($q) use ($statusFilter) {
+                $q->where('status', $statusFilter);
+            });
+
+        $facultyList = $query->paginate(15)->withQueryString();
+
+        $totalFaculty = User::where('role', 'faculty')->count();
+        $departments = User::where('role', 'faculty')->whereNotNull('department')->select('department')->distinct()->pluck('department');
+        
+        $departmentStats = [];
+        foreach($departments as $dept) {
+            if ($dept) {
+                $departmentStats[] = [
+                    'label' => $dept,
+                    'count' => User::where('role', 'faculty')->where('department', $dept)->count()
+                ];
+            }
+        }
+        
+        if (empty($departmentStats)) {
+             // Fallback default levels if none are set
+             $defaultLevels = ['Senior High School', '1st Year College', '2nd Year College', '3rd Year College'];
+             foreach($defaultLevels as $lvl) {
+                 $departmentStats[] = [
+                    'label' => $lvl,
+                    'count' => User::where('role', 'faculty')->where('department', $lvl)->count()
+                 ];
+             }
+        }
+
+        return view('admin.faculty.index', compact('facultyList', 'totalFaculty', 'departmentStats', 'search', 'departmentFilter', 'statusFilter', 'departments'));
+    }
+
+    public function facultyShow(User $user): View
+    {
+        abort_if($user->role !== 'faculty', 404);
+
+        // Load subjects they are teaching (classrooms)
+        $classrooms = $user->classroomsAsFaculty()->withCount('students')->get();
+
+        return view('admin.faculty.show', compact('user', 'classrooms'));
+    }
+
+    public function toggleFacultyStatus(Request $request, User $user): RedirectResponse
+    {
+        abort_if($user->role !== 'faculty', 404);
+
+        $newStatus = $request->input('status') === 'active' ? 'inactive' : 'active';
+        $user->update(['status' => $newStatus]);
+
+        return back()->with('status', "Faculty account for {$user->name} has been " . ($newStatus === 'active' ? 'activated' : 'deactivated') . ".");
     }
 }
 

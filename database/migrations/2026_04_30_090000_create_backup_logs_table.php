@@ -1,0 +1,27 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('backup_logs', function (Blueprint $table) {
+            $table->id();
+            $table->string('filename');
+            $table->bigInteger('size_bytes')->default(0);
+            $table->string('initiated_by')->default('System'); // admin name or 'Scheduled'
+            $table->string('type')->default('manual');         // manual | scheduled
+            $table->string('status')->default('success');      // success | failed
+            $table->text('notes')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('backup_logs');
+    }
+};

@@ -16,33 +16,16 @@ return new class extends Migration
             $table->unsignedBigInteger('student_user_id')->nullable()->after('faculty_user_id');
         });
 
-        // Best-effort population: prefer matching by email, then fallback to matching by name
-        // Match by email where student_name appears to contain an email in parentheses: "Name (email@domain)"
-        // First, attempt a direct email match if student_name contains an email in parentheses
+        // Best-effort population: match by exact name (case-sensitive)
+        // More aggressive matching (email-based, fuzzy) is done via the artisan command attendance:map-students
         DB::statement(<<<'SQL'
-            UPDATE faculty_attendance_records far
-            JOIN users u ON u.email = SUBSTRING_INDEX(SUBSTRING_INDEX(far.student_name, '(', -1), ')', 1)
-            SET far.student_user_id = u.id
-            WHERE far.student_user_id IS NULL
-              AND far.student_name LIKE '%(%@%)%'
-        SQL
-        );
-
-        // Next, attempt direct email==student_name match
-        DB::statement(<<<'SQL'
-            UPDATE faculty_attendance_records far
-            JOIN users u ON u.email = far.student_name
-            SET far.student_user_id = u.id
-            WHERE far.student_user_id IS NULL
-        SQL
-        );
-
-        // Finally, fallback to matching by name (best-effort)
-        DB::statement(<<<'SQL'
-            UPDATE faculty_attendance_records far
-            LEFT JOIN users u ON u.name = far.student_name
-            SET far.student_user_id = u.id
-            WHERE far.student_user_id IS NULL
+            UPDATE faculty_attendance_records
+            SET student_user_id = (
+                SELECT u.id FROM users u
+                WHERE u.name = faculty_attendance_records.student_name
+                LIMIT 1
+            )
+            WHERE student_user_id IS NULL
         SQL
         );
 

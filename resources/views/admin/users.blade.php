@@ -14,6 +14,29 @@
     </div>
 
     <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
+        <div class="mb-6 rounded-xl border border-slate-100 bg-slate-50 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold">Bulk Student Import</h3>
+                    <p class="text-sm text-slate-500">Upload a CSV to create student accounts. Download the template first.</p>
+                </div>
+                <div class="flex gap-3 items-center">
+                    <a href="{{ route('admin.users.template.download') }}" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">Download CSV Template</a>
+                    <form action="{{ route('admin.users.import') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2">
+                        @csrf
+                        <input type="file" name="csv_file" accept=".csv,text/csv" class="text-sm">
+                        <button type="submit" class="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700">Import</button>
+                    </form>
+                </div>
+            </div>
+            @if($errors->has('csv_errors'))
+                <div class="mt-3 text-sm text-rose-600">{{ $errors->first('csv_errors') }}</div>
+            @endif
+            @if(session('import_result'))
+                <div class="mt-3 text-sm text-slate-700">Imported: {{ session('import_result.success') }}, Failed: {{ session('import_result.failed') }}, Duplicates: {{ session('import_result.duplicates') }}</div>
+            @endif
+        </div>
+
         <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
             <div>
                 <h2 class="text-xl font-bold text-slate-900">All Users</h2>
@@ -71,18 +94,8 @@
                             <td class="px-5 py-4 text-slate-500 text-xs">{{ $user['joined'] }}</td>
                             <td class="px-5 py-4">
                                 <div class="flex gap-2">
-                                    @if($user['role'] === 'student' && $user['status'] === 'pending')
-                                        @if($user['enrollment_type'] === 'New Student' && $user['receipt_proof'])
-                                            <a href="{{ asset('storage/' . $user['receipt_proof']) }}" target="_blank" class="rounded-lg bg-sky-100 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-200 transition">View Receipt</a>
-                                        @elseif($user['enrollment_type'] === 'Old Student' && $user['student_id_proof'])
-                                            <a href="{{ asset('storage/' . $user['student_id_proof']) }}" target="_blank" class="rounded-lg bg-sky-100 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-200 transition">View ID</a>
-                                        @else
-                                            <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-400">No Doc</span>
-                                        @endif
-                                    @else
-                                        <button class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition">View</button>
-                                    @endif
-                                    <button class="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-200 transition">Edit</button>
+                                    <a href="{{ route('admin.users.show', $user['id']) }}" class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition">View</a>
+                                    <a href="{{ route('admin.users.edit', $user['id']) }}" class="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-200 transition">Edit</a>
                                     @if($user['status']==='active')
                                         <form method="POST" action="{{ route('admin.users.activate', $user['id']) }}" class="inline">
                                             @csrf
